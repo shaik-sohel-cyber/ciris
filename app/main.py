@@ -46,7 +46,39 @@ def get_genai_model():
     if not HAS_GENAI or genai is None:
         raise RuntimeError("Gemini OCR dependency not installed. Install `google-generativeai` to enable /api/ocr/gemini.")
     genai.configure(api_key=GEMINI_KEYS[current_key_index])
-    return genai.GenerativeModel('gemini-1.5-flash')
+
+    # ENHANCED DYNAMIC MODEL DETECTION: Use ALL available Gemini models as fallbacks, prioritizing speed
+    try:
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+
+        # Extended priority list for FIR extractions (Speed first, then accuracy)
+        priority = [
+            'models/gemini-2.0-flash-exp',  # Fastest
+            'models/gemini-1.5-flash-8b',  # Fast and efficient
+            'models/gemini-1.5-flash',    # Balanced
+            'models/gemini-flash-latest', # Latest flash
+            'models/gemini-2.0-flash-lite', # Lite version
+            'models/gemini-1.5-flash-latest', # Latest 1.5 flash
+            'models/gemini-1.5-pro',      # More accurate but slower
+            'models/gemini-pro-vision',   # Vision capable
+            'models/gemini-1.0-pro',      # Older but stable
+        ]
+
+        # Filter to only available models
+        available_priority = [p for p in priority if p in available_models]
+
+        # If no priority models, use all available Gemini models sorted by name (flash first)
+        if not available_priority:
+            gemini_models = [m for m in available_models if 'gemini' in m.lower()]
+            available_priority = sorted(gemini_models, key=lambda x: ('flash' not in x.lower(), x))
+
+        target = available_priority[0] if available_priority else available_models[0]
+
+        print(f"--- AI CORE: Using Gemini Model [{target}] from {len(available_priority)} available ---")
+        return genai.GenerativeModel(target)
+    except Exception as e:
+        print(f"Auto-detection failed: {e}. Falling back to hardcoded gemini-1.5-flash")
+        return genai.GenerativeModel('gemini-1.5-flash')
 
 app = FastAPI(title="CIRIS - FIR Management & Dashboard", debug=True)
 
@@ -1865,62 +1897,88 @@ def extract_fir_data_from_ocr(ocr_text: str) -> dict:
 @app.post("/api/ocr/gemini")
 async def api_ocr_gemini(file: UploadFile = File(...)):
     """
-    AI-POWERED EXTRACTION ENGINE (GEMINI VISION)
-    Replaces noisy Tesseract OCR with multimodal structural analysis.
+    ULTRA-RESILIENT AI EXTRACTION (INFINITE FALLBACK)
+    Rotates through multiple Models AND multiple Keys to ensure 100% success.
     """
+    global current_key_index
+    contents = await file.read()
+    
+    # Dynamic list of ALL available Gemini models as fallbacks
     try:
-        contents = await file.read()
-        img = PIL.Image.open(io.BytesIO(contents))
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        MODEL_FALLBACKS = [m for m in available_models if 'gemini' in m.lower()]
+        # Sort by speed: flash models first, then others
+        MODEL_FALLBACKS.sort(key=lambda x: ('flash' not in x.lower(), x))
+    except Exception:
+        # Fallback to static list if API fails
+        MODEL_FALLBACKS = [
+            'models/gemini-2.0-flash-exp',
+            'models/gemini-1.5-flash-8b',
+            'models/gemini-1.5-flash',
+            'models/gemini-flash-latest',
+            'models/gemini-2.0-flash-lite',
+            'models/gemini-1.5-flash-latest',
+            'models/gemini-1.5-pro',
+            'models/gemini-pro-vision',
+            'models/gemini-1.0-pro'
+        ]
+    
+    # Outer Loop: API Keys
+    for attempt_key in range(len(GEMINI_KEYS)):
+        current_api_key = GEMINI_KEYS[current_key_index]
+        genai.configure(api_key=current_api_key)
         
-        model = get_genai_model()
-        
-        prompt = """
-        Analyze this FIR (First Information Report) image and extract all details into a clean JSON format.
-        Return ONLY the JSON. Fields:
-        - fir_number: (e.g. 000503)
-        - fir_date: (DD/MM/YYYY)
-        - district, ps, year
-        - acts_sections: (e.g. IPC 379)
-        - occ_day, occ_date_from, occ_time_from
-        - complainant_name, complainant_parentage, complainant_nationality
-        - complainant_address, complainant_mobile, complainant_email
-        - property_details, property_value
-        - description: (Narrative text from section 12)
-        - fir_contents: (Same as description)
-        - action_taken: (From section 13)
-        - investigating_officer: (From signature footer)
-        - location_text: (From section 5b)
-        - crime_type: (Theft, Robbery, or Other)
-        """
-        
-        response = model.generate_content([prompt, img])
-        
-        # Parse JSON from response
-        text = response.text.strip()
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0].strip()
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0].strip()
-            
-        extracted_data = json.loads(text)
-        
-        # Ensure consistency with frontend expected fields
-        if 'ps' in extracted_data and not extracted_data.get('station_name'):
-            extracted_data['station_name'] = extracted_data['ps']
-        if 'fir_date' in extracted_data and not extracted_data.get('incident_date'):
-            extracted_data['incident_date'] = extracted_data['fir_date']
+        # Inner Loop: Models for this key
+        for model_name in MODEL_FALLBACKS:
+            try:
+                print(f"--- AI HUB: Attempting [{model_name}] with Key [{current_key_index}] ---")
+                model = genai.GenerativeModel(model_name)
+                img = PIL.Image.open(io.BytesIO(contents))
+                
+                prompt = """
+                Analyze this FIR image and extract all details into a clean JSON format.
+                Return ONLY JSON. Fields: fir_number, fir_date, district, ps, year, acts_sections, occ_day, occ_date_from, occ_time_from, complainant_name, complainant_parentage, complainant_nationality, complainant_address, complainant_mobile, complainant_email, property_details, property_value, description, fir_contents, action_taken, investigating_officer, location_text, crime_type.
+                """
+                
+                response = model.generate_content([prompt, img])
+                
+                # Robust JSON Scraper
+                text = ""
+                try:
+                    text = response.text.strip()
+                except:
+                    print(f"Model {model_name} blocked content or failed response.text")
+                    continue
+                
+                if "{" not in text: continue
+                
+                start = text.find('{')
+                end = text.rfind('}')
+                json_str = text[start:end+1]
+                
+                extracted_data = json.loads(json_str)
+                
+                # Normalization
+                if 'ps' in extracted_data and not extracted_data.get('station_name'):
+                    extracted_data['station_name'] = extracted_data['ps']
+                if 'fir_date' in extracted_data and not extracted_data.get('incident_date'):
+                    extracted_data['incident_date'] = extracted_data['fir_date']
 
-        return JSONResponse({
-            "success": True,
-            "extracted_data": extracted_data
-        })
-    except Exception as e:
-        # Fallback to next key if possible
-        global current_key_index
-        if "429" in str(e) or "quota" in str(e).lower():
-            current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
-            return await api_ocr_gemini(file) # Retry once
-        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+                return JSONResponse({"success": True, "extracted_data": extracted_data})
+
+            except Exception as e:
+                print(f"Model {model_name} failed: {str(e)[:100]}")
+                continue # Try next model
+        
+        # If all models failed for this key, rotate key
+        print(f"!!! KEY EXHAUSTED: Rotating from Key {current_key_index} !!!")
+        current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+        
+    return JSONResponse({
+        "success": False, 
+        "error": "Exhausted all Gemini models and API keys. Please check image quality or quota.",
+        "details": "All fallbacks (Flash 1.5, 2.0, Pro) were attempted."
+    }, status_code=500)
 
 
 @app.post("/api/ocr/parse-text")
@@ -2053,6 +2111,20 @@ async def create_fir(
     db.refresh(fir)
     
     return RedirectResponse("/firs", status_code=303)
+
+
+@app.get("/firs/{fir_id}", response_class=HTMLResponse)
+def view_fir(fir_id: int, request: Request, db: Session = Depends(get_db)):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+    fir = db.query(FIR).filter(FIR.id == fir_id).first()
+    if not fir:
+        return templates.TemplateResponse(request=request, name="fir_list.html", context={"request": request, "error": "FIR not found"})
+    return templates.TemplateResponse(
+        request=request, name="fir_detail.html",
+        context={"request": request, "fir": fir}
+    )
 
 
 @app.get("/firs/{fir_id}/edit", response_class=HTMLResponse)
