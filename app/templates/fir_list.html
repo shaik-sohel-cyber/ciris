@@ -30,6 +30,15 @@
                 {% endfor %}
             </select>
         </div>
+        <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Crime Type</label>
+            <select name="crime_type" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px 14px;">
+                <option value="">All Types</option>
+                {% for ct in crime_types %}
+                <option value="{{ ct }}" {% if selected_crime_type == ct %}selected{% endif %}>{{ ct }}</option>
+                {% endfor %}
+            </select>
+        </div>
         <div style="display: flex; gap: 10px; align-items: center;">
             <button type="submit" class="btn-primary-custom" style="padding: 10px 22px;">
                 <i class="fas fa-search"></i> Search
@@ -39,6 +48,30 @@
             </a>
         </div>
     </form>
+</div>
+
+<!-- Status Summary Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+    <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue);">{{ status_counts['Open'] or 0 }}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Open</div>
+    </div>
+    <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;">{{ status_counts['Under Investigation'] or 0 }}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Under Investigation</div>
+    </div>
+    <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;">{{ status_counts['Active Search'] or 0 }}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Active Search</div>
+    </div>
+    <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">{{ status_counts['Resolved'] or 0 }}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Resolved</div>
+    </div>
+    <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-muted);">{{ status_counts['Closed'] or 0 }}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Closed</div>
+    </div>
 </div>
 
 <!-- FIR Count badge -->
@@ -85,6 +118,10 @@
                 <td style="padding: 13px 18px; color: var(--text-muted); font-size: .8rem;">{{ fir.status }}</td>
                 <td style="padding: 13px 18px;" onclick="event.stopPropagation()">
                     <div style="display: flex; gap: 8px; align-items: center;">
+                        <a href="/firs/{{ fir.id }}/edit" title="Edit FIR"
+                            style="background: rgba(59,130,246,.15); color: #3b82f6; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: .75rem; text-decoration: none; display: inline-block;">
+                            <i class="fas fa-edit"></i>
+                        </a>
                         <button onclick="openFIRModal({{ fir.id }})"
                             style="background: rgba(59,130,246,.15); color: #3b82f6; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: .75rem;">
                             <i class="fas fa-eye"></i>
@@ -109,6 +146,31 @@
         </tbody>
     </table>
 </div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px; background: var(--secondary-bg); border-radius: 10px;">
+    <div style="font-size: 0.82rem; color: var(--text-muted);">
+        Showing page <strong style="color: var(--text-main);">{{ current_page }}</strong> of <strong style="color: var(--text-main);">{{ total_pages }}</strong>
+        <span style="margin-left: 15px;">({{ total_count }} total records)</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        {% if current_page > 1 %}
+        <a href="/firs?page={{ current_page - 1 }}{% if q %}&q={{ q }}{% endif %}{% if selected_district %}&district={{ selected_district }}{% endif %}{% if selected_crime_type %}&crime_type={{ selected_crime_type }}{% endif %}" 
+           style="padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); text-decoration: none;">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% endif %}
+        
+        {% if current_page < total_pages %}
+        <a href="/firs?page={{ current_page + 1 }}{% if q %}&q={{ q }}{% endif %}{% if selected_district %}&district={{ selected_district }}{% endif %}{% if selected_crime_type %}&crime_type={{ selected_crime_type }}{% endif %}" 
+           style="padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); text-decoration: none;">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <!-- ── FIR Detail Modal ── -->
 <div id="firModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:3000; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
@@ -143,6 +205,20 @@
                     <div>
                         <div class="m-label">Time</div>
                         <div id="m-time" class="m-val"></div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                    <div>
+                        <div class="m-label">Weapon Used</div>
+                        <div id="m-weapon" class="m-val"></div>
+                    </div>
+                    <div>
+                        <div class="m-label">Victim Age</div>
+                        <div id="m-victim-age" class="m-val"></div>
+                    </div>
+                    <div>
+                        <div class="m-label">Victim Gender</div>
+                        <div id="m-victim-gender" class="m-val"></div>
                     </div>
                 </div>
                 <div>
@@ -193,7 +269,10 @@
         </div>
 
         <!-- Footer -->
-        <div style="margin-top:24px; display:flex; justify-content:flex-end;">
+        <div style="margin-top:24px; display:flex; justify-content:space-between;">
+            <a id="m-edit-link" href="#" style="background:var(--accent-blue); color:#fff; border:none; border-radius:8px; padding:10px 24px; cursor:pointer; text-decoration:none;">
+                <i class="fas fa-edit"></i> Edit FIR
+            </a>
             <button onclick="closeFIRModal()" style="background:var(--card-bg); color:var(--text-muted); border:1px solid var(--border-color); border-radius:8px; padding:10px 24px; cursor:pointer;">
                 Close
             </button>
@@ -225,6 +304,9 @@
             crime_type: {{ (fir.crime_type or '') | tojson }},
             priority: {{ fir.priority | tojson }},
             status: {{ fir.status | tojson }},
+            weapon_used: {{ (fir.weapon_used or '') | tojson }},
+            victim_age: {{ fir.victim_age if fir.victim_age else '' | tojson }},
+            victim_gender: {{ (fir.victim_gender or '') | tojson }},
             description: {{ (fir.description or '') | tojson }},
             evidence_summary: {{ (fir.evidence_summary or '') | tojson }},
             tags: {{ (fir.tags or '') | tojson }},
@@ -253,6 +335,9 @@
         document.getElementById('m-district').textContent = f.district || '—';
         document.getElementById('m-date').textContent = f.incident_date || '—';
         document.getElementById('m-time').textContent = f.incident_time || '—';
+        document.getElementById('m-weapon').textContent = f.weapon_used || '—';
+        document.getElementById('m-victim-age').textContent = f.victim_age || '—';
+        document.getElementById('m-victim-gender').textContent = f.victim_gender || '—';
         document.getElementById('m-complainant').textContent = f.complainant_name || '—';
         document.getElementById('m-accused').textContent = f.accused_name || '—';
         document.getElementById('m-location').textContent = f.location_text || '—';
@@ -283,6 +368,9 @@
             imgEl.style.display = 'none';
             noImg.style.display = 'flex';
         }
+
+        // Edit link
+        document.getElementById('m-edit-link').href = '/firs/' + id + '/edit';
 
         document.getElementById('firModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
