@@ -448,11 +448,29 @@
         }
     }
 
+    function formatDateStr(dStr) {
+        if (!dStr) return '';
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
+        const parts = dStr.split(/[\/\-\.]/);
+        if (parts.length === 3 && parts[0].length <= 2 && parseInt(parts[0]) <= 31) {
+            return `${parts[2].length === 2 ? '20'+parts[2] : parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return dStr;
+    }
+
+    function formatTimeStr(tStr) {
+        if (!tStr) return '';
+        if (/^\d{2}:\d{2}$/.test(tStr)) return tStr;
+        const match = tStr.match(/(\d{1,2}):(\d{2})/);
+        if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+        return tStr;
+    }
+
     function fillForm(d) {
         const mapping = {
             'f_fir_no': d.fir_number,
-            'f_date': d.incident_date || d.fir_date,
-            'f_time': d.incident_time || d.occ_time_from,
+            'f_date': formatDateStr(d.incident_date || d.fir_date),
+            'f_time': formatTimeStr(d.incident_time || d.occ_time_from),
             'f_ps': d.station_name || d.ps,
             'f_district': d.district,
             'f_crime_type': d.crime_type,

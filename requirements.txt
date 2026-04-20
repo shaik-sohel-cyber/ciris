@@ -6,4 +6,8 @@ python-multipart
 opencv-python
 ultralytics
 pytesseract
-pillow
+pillow
+firebase-admin
+python-jose[cryptography]
+python-dotenv
+google-generativeai

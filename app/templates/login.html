@@ -8,33 +8,440 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
         rel="stylesheet"
     />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+        }
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .card {
+            border: none;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .card-header h2 {
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .card-header p {
+            margin: 5px 0 0 0;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .card-body {
+            padding: 30px;
+        }
+        .error-alert {
+            display: none;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .nav-tabs {
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 25px;
+        }
+        .nav-tabs .nav-link {
+            color: #666;
+            border: none;
+            padding: 10px 20px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .nav-tabs .nav-link:hover {
+            color: #0d47a1;
+            border-bottom-color: #0d47a1;
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d47a1;
+            background: none;
+            border-bottom-color: #0d47a1;
+        }
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #0d47a1;
+            box-shadow: 0 0 0 0.2rem rgba(13, 71, 161, 0.15);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
+            border: none;
+            padding: 10px 20px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(13, 71, 161, 0.3);
+        }
+        .btn-google {
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #333;
+            padding: 10px 20px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-google:hover {
+            background: #f9f9f9;
+            border-color: #0d47a1;
+            color: #0d47a1;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 71, 161, 0.2);
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #999;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider span {
+            margin: 0 10px;
+            font-size: 0.85rem;
+        }
+        .spinner-border {
+            width: 30px;
+            height: 30px;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .footer-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #999;
+            font-size: 0.85rem;
+        }
+    </style>
 </head>
-<body class="bg-dark d-flex align-items-center justify-content-center" style="min-height: 100vh;">
-    <div class="card shadow-lg p-4" style="width: 380px;">
-        <h2 class="mb-3 text-center">CIRIS Login</h2>
-        <p class="text-muted text-center mb-4">Authorized officers only</p>
-
-        {% if error %}
-            <div class="alert alert-danger">{{ error }}</div>
-        {% endif %}
-
-        <form method="post" action="/login">
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input class="form-control" type="text" name="username" required />
+<body>
+    <div class="login-container">
+        <div class="card" style="width: 420px;">
+            <div class="card-header">
+                <h2><i class="fas fa-shield-alt"></i> CIRIS</h2>
+                <p>Crime Incident Risk Intelligence System</p>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input class="form-control" type="password" name="password" required />
+            <div class="card-body">
+                <div class="alert alert-danger error-alert" id="errorAlert" role="alert"></div>
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs" id="authTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Login</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="signup-tab" data-bs-toggle="tab" data-bs-target="#signup" type="button" role="tab">Sign Up</button>
+                    </li>
+                </ul>
+
+                <!-- Login Tab -->
+                <div class="tab-content" id="authTabContent">
+                    <div class="tab-pane fade show active" id="login" role="tabpanel">
+                        <!-- Google Sign-in -->
+                        <button class="btn btn-google w-100 mb-3" id="googleLoginBtn" type="button">
+                            <i class="fab fa-google"></i> Sign in with Google
+                        </button>
+
+                        <div class="divider">
+                            <span>or</span>
+                        </div>
+
+                        <!-- Email/Password Login -->
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input class="form-control" type="email" id="loginEmail" placeholder="your@email.com" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input class="form-control" type="password" id="loginPassword" placeholder="••••••••" />
+                        </div>
+                        <button class="btn btn-primary w-100" id="loginBtn" type="button">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </button>
+                    </div>
+
+                    <!-- Signup Tab -->
+                    <div class="tab-pane fade" id="signup" role="tabpanel">
+                        <!-- Google Sign-up -->
+                        <button class="btn btn-google w-100 mb-3" id="googleSignupBtn" type="button">
+                            <i class="fab fa-google"></i> Sign up with Google
+                        </button>
+
+                        <div class="divider">
+                            <span>or</span>
+                        </div>
+
+                        <!-- Email/Password Signup -->
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input class="form-control" type="text" id="signupName" placeholder="John Doe" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input class="form-control" type="email" id="signupEmail" placeholder="your@email.com" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input class="form-control" type="password" id="signupPassword" placeholder="••••••••" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input class="form-control" type="password" id="signupConfirmPassword" placeholder="••••••••" />
+                        </div>
+                        <button class="btn btn-primary w-100" id="signupBtn" type="button">
+                            <i class="fas fa-user-plus"></i> Create Account
+                        </button>
+                    </div>
+                </div>
+
+                <div class="footer-text">
+                    <p>Authorized officers only | CIRIS v2.0</p>
+                </div>
             </div>
-
-            <button class="btn btn-dark w-100" type="submit">Login</button>
-        </form>
-
-        <div class="mt-3 text-muted small text-center">
-            Demo credentials: admin / admin123
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            signInWithPopup,
+            GoogleAuthProvider,
+            updateProfile 
+        } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLqOJRZ13DyJG3vEkksWNHYdeDHDK6D-w",
+            authDomain: "ciris-493917.firebaseapp.com",
+            projectId: "ciris-493917",
+            storageBucket: "ciris-493917.firebasestorage.app",
+            messagingSenderId: "507383874363",
+            appId: "1:507383874363:web:78cfbef69fd3576735ad1e"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        const errorAlert = document.getElementById('errorAlert');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.style.display = 'block';
+            loadingSpinner.style.display = 'none';
+        }
+
+        function clearError() {
+            errorAlert.style.display = 'none';
+        }
+
+        function showLoading() {
+            loadingSpinner.style.display = 'block';
+            clearError();
+        }
+
+        function hideLoading() {
+            loadingSpinner.style.display = 'none';
+        }
+
+        async function verifyAndRedirect(user) {
+            try {
+                const idToken = await user.getIdToken();
+                const response = await fetch('/api/verify-firebase-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: idToken, email: user.email })
+                });
+
+                if (response.ok) {
+                    window.location.href = '/dashboard';
+                } else {
+                    hideLoading();
+                    const result = await response.json();
+                    showError(result.error || 'Session creation failed. Please try again.');
+                }
+            } catch (error) {
+                hideLoading();
+                showError(error.message || 'An error occurred. Please try again.');
+            }
+        }
+
+        // Google Sign-in Handler (Login)
+        document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+            showLoading();
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
+                await verifyAndRedirect(user);
+            } catch (error) {
+                hideLoading();
+                showError(error.message || 'Google sign-in failed. Please try again.');
+            }
+        });
+
+        // Google Sign-up Handler
+        document.getElementById('googleSignupBtn').addEventListener('click', async () => {
+            showLoading();
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
+                
+                // Register with backend
+                const idToken = await user.getIdToken();
+                const response = await fetch('/api/register-firebase-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: idToken,
+                        email: user.email,
+                        name: user.displayName || user.email
+                    })
+                });
+
+                if (response.ok) {
+                    window.location.href = '/dashboard';
+                } else {
+                    hideLoading();
+                    const result = await response.json();
+                    showError(result.error || 'Registration failed. Please try again.');
+                }
+            } catch (error) {
+                hideLoading();
+                showError(error.message || 'Google sign-up failed. Please try again.');
+            }
+        });
+
+        // Email/Password Login Handler
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showError('Please enter email and password');
+                return;
+            }
+
+            showLoading();
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await verifyAndRedirect(user);
+            } catch (error) {
+                hideLoading();
+                showError(error.message || 'Login failed. Please check your credentials.');
+            }
+        });
+
+        // Email/Password Signup Handler
+        document.getElementById('signupBtn').addEventListener('click', async () => {
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+            if (!name || !email || !password || !confirmPassword) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+
+            showLoading();
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Update user profile with name
+                await updateProfile(user, { displayName: name });
+
+                // Register with backend
+                const idToken = await user.getIdToken();
+                const response = await fetch('/api/register-firebase-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: idToken,
+                        email: user.email,
+                        name: name
+                    })
+                });
+
+                if (response.ok) {
+                    window.location.href = '/dashboard';
+                } else {
+                    hideLoading();
+                    const result = await response.json();
+                    showError(result.error || 'Registration failed. Please try again.');
+                }
+            } catch (error) {
+                hideLoading();
+                showError(error.message || 'Sign up failed. Please try again.');
+            }
+        });
+
+        // Enter key handlers
+        document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+        document.getElementById('signupConfirmPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('signupBtn').click();
+        });
+    </script>
 </body>
 </html>

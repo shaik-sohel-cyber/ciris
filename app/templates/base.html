@@ -201,10 +201,7 @@
           <i class="fas fa-folder-open"></i>
           <span>Evidence</span>
         </a>
-        <a href="/image-enhancement" class="nav-item">
-          <i class="fas fa-image"></i>
-          <span>Image Enhancement</span>
-        </a>
+      
       </nav>
     </div>
 
@@ -238,8 +235,8 @@
             <i class="fas fa-user-shield"></i>
           </div>
           <div style="font-size: 0.85rem;">
-            <div style="font-weight: 700;">Admin User</div>
-            <div style="color: var(--text-muted); font-size: 0.75rem;">nada@gmail.com</div>
+            <div style="font-weight: 700;">{{ user }}</div>
+            <div style="color: var(--text-muted); font-size: 0.75rem;">{{ user_email if user_email else 'user@ciris.local' }}</div>
           </div>
         </div>
       </div>
