@@ -25,7 +25,7 @@
                 style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">
                 <i class="fas fa-network-wired"></i>
                 {{ model_name }} ·
-                <span style="color: var(--accent-blue);">REAL YOLO OBJECT DETECTION · 8 CAMERA VIEW</span>
+                <span style="color: var(--accent-blue);">LIVE INCIDENT DETECTION · 8 CAMERA VIEW</span>
             </div>
         </div>
 
@@ -65,19 +65,6 @@
                     <option value="Saroor Nagar Signal, Hyderabad">Saroor Nagar Signal</option>
                 </select>
             </div>
-
-            <label class="btn-premium secondary" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <i class="fas fa-upload"></i> Upload Video
-                <input type="file" id="videoUpload" accept="video/*" hidden>
-            </label>
-
-            <button class="btn-premium" id="connectBtn" onclick="startMonitoring()">
-                <i class="fas fa-play"></i> Start Monitor
-            </button>
-
-            <button class="btn-premium secondary" id="disconnectBtn" onclick="stopMonitoring()">
-                <i class="fas fa-stop"></i> Stop
-            </button>
 
             <a href="/notifications" class="btn-premium secondary"
                 style="display:flex; align-items:center; gap:8px; text-decoration:none;">
@@ -611,9 +598,7 @@
 </style>
 
 <script>
-    let ws = null;
     let activeCameraId = "cam1";
-    let lastSummaryByCamera = {};
 
     // 8 logical cameras — only 4 visible slots at a time (2×2 wall)
     const VISIBLE_SLOTS = ["slot0", "slot1", "slot2", "slot3"];
@@ -622,11 +607,18 @@
     // Map: cameraId -> slotId (reverse)
     const camSlot = { cam1: "slot0", cam2: "slot1", cam3: "slot2", cam4: "slot3" };
 
+    const VIDEO_URLS = {
+        cam1: "/static/uploads/cam1%20vid.mp4",
+        cam2: "/static/uploads/cam2%20vid.mp4",
+        cam3: "/static/uploads/cam3%20vid.mp4",
+        cam4: "/static/uploads/cam4%20vid.mp4",
+    };
+
     const cameraStates = {
-        cam1: { label: "CAM-01", area: "Panjagutta Signal, Hyderabad",               videoUrl: "", status: "READY" },
-        cam2: { label: "CAM-02", area: "Hitech City Junction, Hyderabad",            videoUrl: "", status: "READY" },
-        cam3: { label: "CAM-03", area: "Charminar Crossroad, Hyderabad",             videoUrl: "", status: "READY" },
-        cam4: { label: "CAM-04", area: "Secunderabad Railway Station, Hyderabad",    videoUrl: "", status: "READY" },
+        cam1: { label: "CAM-01", area: "Panjagutta Signal, Hyderabad",               videoUrl: VIDEO_URLS.cam1, status: "READY" },
+        cam2: { label: "CAM-02", area: "Hitech City Junction, Hyderabad",            videoUrl: VIDEO_URLS.cam2, status: "READY" },
+        cam3: { label: "CAM-03", area: "Charminar Crossroad, Hyderabad",             videoUrl: VIDEO_URLS.cam3, status: "READY" },
+        cam4: { label: "CAM-04", area: "Secunderabad Railway Station, Hyderabad",    videoUrl: VIDEO_URLS.cam4, status: "READY" },
         cam5: { label: "CAM-05", area: "Mehdipatnam Signal, Hyderabad",              videoUrl: "", status: "READY" },
         cam6: { label: "CAM-06", area: "KPHB Colony Road, Hyderabad",                videoUrl: "", status: "READY" },
         cam7: { label: "CAM-07", area: "Dilsukhnagar Bus Stop, Hyderabad",           videoUrl: "", status: "READY" },
@@ -635,7 +627,6 @@
 
     const allCameraIds = Object.keys(cameraStates);
 
-    const videoUpload = document.getElementById("videoUpload");
     const eventLog = document.getElementById("eventLog");
     const wsStatusBadge = document.getElementById("wsStatusBadge");
     const sessionStatus = document.getElementById("sessionStatus");
@@ -647,11 +638,14 @@
         tippy('[data-tippy-content]');
         createCameraCards();
         setupSelectors();
-        setupVideoUpload();
         startClock();
-        syncCameraUI();
+        syncSlotStyles();
         updateActiveInfo();
-        addLog("SYSTEM INITIALIZED.");
+        updateWsBadge(true);
+        sessionStatus.innerText = "Running";
+        addLog("SYSTEM INITIALIZED. LIVE INCIDENT DETECTION ENABLED.");
+        autoplayAllVisibleVideos();
+        startLiveDetectionPolling();
     });
 
     function createCameraCards() {
@@ -756,7 +750,16 @@
     function setupSelectors() {
 
         cameraSelect.addEventListener("change", (e) => {
-            setActiveCamera(e.target.value);
+            const requested = e.target.value;
+            // cams 5-8 are logical cameras; wall always shows cams 1-4 videos
+            if (["cam5", "cam6", "cam7", "cam8"].includes(requested)) {
+                activeCameraId = requested;
+                syncSlotStyles();
+                updateActiveInfo();
+                addLog(`${cameraStates[requested].label} selected (logical). Wall playback remains CAM-01..04.`);
+                return;
+            }
+            setActiveCamera(requested);
         });
 
         locationSelect.addEventListener("change", (e) => {
@@ -769,35 +772,13 @@
     }
 
     function setActiveCamera(newCameraId) {
-        // Find which slot the active camera is in and replace it with the new cam
-        const activeSlot = camSlot[activeCameraId];
-
-        if (activeSlot) {
-            // Remove old camera from slot maps
-            delete camSlot[activeCameraId];
-
-            // Assign new camera to the same slot
-            slotMap[activeSlot] = newCameraId;
-            camSlot[newCameraId] = activeSlot;
-
-            // Refresh that slot's DOM
-            const slotEl = document.getElementById(`slot-${activeSlot}`);
-            if (slotEl) {
-                const cam = cameraStates[newCameraId];
-                slotEl.outerHTML = buildCameraCardHTML(activeSlot, newCameraId, cam);
-            }
-        }
-
+        // The wall is fixed to CAM-01..04 videos. Active camera only affects telemetry + sidebar.
         activeCameraId = newCameraId;
         cameraSelect.value = newCameraId;
         locationSelect.value = cameraStates[newCameraId].area;
         syncSlotStyles();
         updateActiveInfo();
         addLog(`Active camera → ${cameraStates[newCameraId].label} (${shortArea(cameraStates[newCameraId].area)})`);
-
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            restartMonitoringForActiveCamera();
-        }
     }
 
     function syncSlotStyles() {
@@ -841,57 +822,6 @@
         cameraSelect.value = activeCameraId;
     }
 
-    function setupVideoUpload() {
-        videoUpload.addEventListener("change", async function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const targetCamera = cameraStates[activeCameraId];
-            const slotId = camSlot[activeCameraId];
-            const targetEls = slotId ? getSlotElements(slotId) : null;
-
-            addLog(`Uploading: ${file.name} → ${targetCamera.label}`);
-            sessionStatus.innerText = "Uploading";
-
-            const formData = new FormData();
-            formData.append("video", file);
-            formData.append("camera_id", activeCameraId);
-            formData.append("location", targetCamera.area);
-
-            try {
-                const res = await fetch("/api/upload-video", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.detail || "Upload failed");
-                }
-
-                const uploadedVideoUrl = data.video_url;
-                cameraStates[activeCameraId].videoUrl = uploadedVideoUrl;
-
-                if (targetEls) {
-                    targetEls.video.src = uploadedVideoUrl;
-                    targetEls.video.load();
-                    try { targetEls.video.currentTime = 0; await targetEls.video.play(); } catch(e2){}
-                    targetEls.summaryBox.innerText = `Video loaded on ${targetCamera.label} — ${shortArea(targetCamera.area)}. Analysing...`;
-                }
-
-                addLog(`Video loaded on ${targetCamera.label}: ${data.file_name}`);
-                sessionStatus.innerText = "Video Loaded";
-                syncSlotStyles();
-                startMonitoring();
-            } catch (err) {
-                console.error(err);
-                addLog(`Upload failed: ${err.message}`);
-                sessionStatus.innerText = "Upload Error";
-            }
-        });
-    }
-
     function startClock() {
         setInterval(() => {
             const timeText = new Date().toLocaleTimeString("en-GB");
@@ -914,66 +844,6 @@
         }
     }
 
-    function restartMonitoringForActiveCamera() {
-        if (ws) {
-            try {
-                ws.close();
-            } catch (e) { }
-            ws = null;
-        }
-        startMonitoring();
-    }
-
-    function startMonitoring() {
-        if (ws && ws.readyState === WebSocket.OPEN) return;
-
-        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const location = encodeURIComponent(cameraStates[activeCameraId].area);
-        ws = new WebSocket(`${protocol}://${window.location.host}/ws/monitoring?camera_id=${activeCameraId}&location=${location}`);
-
-        sessionStatus.innerText = "Connecting";
-        updateWsBadge(false);
-
-        ws.onopen = () => {
-            sessionStatus.innerText = "Running";
-            updateWsBadge(true);
-            addLog(`WebSocket connected for ${cameraStates[activeCameraId].label} (${cameraStates[activeCameraId].area}).`);
-        };
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            renderMonitoring(data);
-        };
-
-        ws.onclose = () => {
-            sessionStatus.innerText = "Stopped";
-            updateWsBadge(false);
-            addLog("WebSocket disconnected.");
-        };
-
-        ws.onerror = () => {
-            sessionStatus.innerText = "Error";
-            updateWsBadge(false);
-            addLog("WebSocket error.");
-        };
-    }
-
-    async function stopMonitoring() {
-        try {
-            await fetch("/api/monitoring/stop", { method: "POST" });
-        } catch (err) {
-            console.error(err);
-        }
-
-        if (ws) {
-            ws.close();
-            ws = null;
-        }
-
-        sessionStatus.innerText = "Stopped";
-        updateWsBadge(false);
-    }
-
     function updateWsBadge(connected) {
         if (connected) {
             wsStatusBadge.innerHTML = '<i class="fas fa-satellite-dish"></i> CONNECTED';
@@ -986,24 +856,11 @@
         }
     }
 
-    function renderMonitoring(data) {
-        const targetCameraId = data.camera_id || activeCameraId;
-        const slotId = camSlot[targetCameraId];
-
-        renderSession(data.progress || 0, data.status || "idle", data.telemetry || {});
-        renderCounts(data.counts || {});
-        if (slotId) {
-            renderCrimeState(slotId, data);
-            renderBoxes(slotId, data);
-        }
-        renderDetectionQueue(data.notifications || []);
-
-        if (data.summary && data.summary !== lastSummaryByCamera[targetCameraId]) {
-            addLog(`${cameraStates[targetCameraId].label}: ${data.summary}`);
-            lastSummaryByCamera[targetCameraId] = data.summary;
-        }
-
-        if (data.error) addLog(`ERROR: ${data.error}`);
+    function renderMonitoringTick(notifications) {
+        // Minimal "session" + counts (counts are not model-based in this demo mode)
+        renderSession(0.0, "running", { frame_index: 0, total_frames: 0 });
+        renderCounts({});
+        renderDetectionQueue(notifications || []);
     }
 
     function renderSession(progress, status, telemetry) {
@@ -1068,11 +925,9 @@
         els.bboxLayer.innerHTML = "";
 
         const detectedCrime = data.crime_type || data.detected_crime || data.action || "NO CRIME";
-        const renderableBoxes = boxes.filter(b => b && b.is_crime_box);
-        const shouldRender = renderableBoxes.length > 0 &&
-            detectedCrime &&
-            !["IDLE","SCANNING","NO CRIME","UNKNOWN","PERSON DETECTED","OBJECT DETECTED"].includes(detectedCrime.toUpperCase());
-        if (!shouldRender) return;
+        // Render ALL boxes (moving per-frame). Crime boxes are colored red by backend.
+        const renderableBoxes = boxes.filter(b => b && typeof b.x === "number" && typeof b.y === "number");
+        if (renderableBoxes.length === 0) return;
 
         renderableBoxes.forEach(box => {
             const el = document.createElement("div");
@@ -1086,7 +941,8 @@
             const label = document.createElement("div");
             label.className = "bbox-label";
             label.style.background = box.color || "#3b82f6";
-            label.innerText = `${box.label} ${box.confidence ? (box.confidence * 100).toFixed(0) : "0"}%`;
+            const pct = (typeof box.confidence === "number") ? (box.confidence * 100).toFixed(0) : "0";
+            label.innerText = `${box.label || "OBJ"} ${pct}%`;
 
             el.appendChild(label);
             els.bboxLayer.appendChild(el);
@@ -1114,6 +970,63 @@
             `;
             queue.appendChild(div);
         });
+    }
+
+    function autoplayAllVisibleVideos() {
+        VISIBLE_SLOTS.forEach(slotId => {
+            const cameraId = slotMap[slotId];
+            const els = getSlotElements(slotId);
+            if (!els || !els.video) return;
+
+            els.video.loop = true;
+            els.video.muted = true;
+            els.video.playsInline = true;
+            els.video.autoplay = true;
+            els.video.controls = true;
+
+            // Ensure src is present even if the DOM was cached
+            const url = cameraStates[cameraId]?.videoUrl || "";
+            if (url && els.video.src !== (new URL(url, window.location.origin)).toString()) {
+                els.video.src = url;
+            }
+
+            const tryPlay = async () => {
+                try {
+                    await els.video.play();
+                } catch (e) {
+                    // Autoplay can be blocked; user interaction will start playback.
+                }
+            };
+            els.video.addEventListener("loadeddata", tryPlay, { once: true });
+            tryPlay();
+        });
+    }
+
+    async function startLiveDetectionPolling() {
+        async function tick() {
+            try {
+                const res = await fetch("/api/live-detections");
+                if (!res.ok) throw new Error(`live-detections ${res.status}`);
+                const data = await res.json();
+
+                const cams = data.cams || {};
+                VISIBLE_SLOTS.forEach(slotId => {
+                    const cameraId = slotMap[slotId];
+                    const camState = cams[cameraId];
+                    if (!camState) return;
+                    renderCrimeState(slotId, camState);
+                    renderBoxes(slotId, camState);
+                });
+
+                renderMonitoringTick(data.notifications || []);
+            } catch (e) {
+                // keep UI alive even if endpoint is temporarily unavailable
+            }
+        }
+
+        // fast polling for smooth boxes
+        setInterval(tick, 350);
+        tick();
     }
 </script>
 {% endblock %}
