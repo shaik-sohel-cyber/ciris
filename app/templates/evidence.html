@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.eis-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.eis-title{font-size:1.75rem;font-weight:700}
+.eis-sub{font-size:.7rem;color:var(--text-muted);letter-spacing:2px}
+.eis-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:20px}
+.eis-card{background:var(--secondary-bg);border:1px solid var(--border-color);border-radius:12px;padding:20px}
+.eis-card h3{font-size:1.05rem;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+.eis-input{width:100%;background:#0b1120;border:1px solid var(--border-color);color:var(--text-main);padding:10px;border-radius:6px;box-sizing:border-box;font-family:inherit;font-size:.9rem}
+.eis-row{display:flex;gap:10px}
+.eis-btn{padding:14px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;border-radius:10px;color:#fff;font-size:1.05rem;font-weight:600;cursor:pointer;width:100%;transition:.3s;letter-spacing:.5px}
+.eis-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(59,130,246,.35)}
+.eis-btn:disabled{opacity:.6;transform:none;cursor:not-allowed}
+.ev-item{background:#0b1120;border:1px solid var(--border-color);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ev-item .ev-row{display:flex;gap:8px;align-items:center}
+.ev-item select,.ev-item input{background:var(--card-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;padding:6px 8px;font-size:.85rem}
+.ev-item input{flex:1}
+.ev-del{background:transparent;border:none;color:var(--accent-red);cursor:pointer;font-size:.9rem;padding:4px 8px}
+.add-ev-btn{padding:6px 14px;background:rgba(16,185,129,.1);border:1px solid var(--accent-green);border-radius:6px;color:var(--accent-green);cursor:pointer;font-size:.8rem;font-weight:600}
+/* Pipeline */
+.pipe-step{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;background:#0f172a;margin-bottom:6px;font-size:.85rem;transition:.3s;border-left:3px solid transparent}
+.pipe-step.running{border-left-color:var(--accent-blue);background:rgba(59,130,246,.08)}
+.pipe-step.done{border-left-color:var(--accent-green);background:rgba(16,185,129,.06)}
+.pipe-step .icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0}
+.pipe-step.running .icon{background:rgba(59,130,246,.2);color:var(--accent-blue)}
+.pipe-step.done .icon{background:rgba(16,185,129,.2);color:var(--accent-green)}
+.pipe-step .agent-name{color:var(--accent-blue);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px}
+.pipe-step .agent-msg{color:var(--text-muted)}
+/* Scenarios */
+.scenario-card{background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(15,23,42,.95));border:1px solid var(--border-color);border-radius:12px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden;transition:.3s}
+.scenario-card:hover{border-color:rgba(139,92,246,.4);transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.scenario-card .rank{position:absolute;top:0;right:0;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-weight:700;font-size:.8rem;padding:6px 14px;border-radius:0 12px 0 12px}
+.scenario-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.scenario-type{font-size:1.15rem;font-weight:700;color:#f1f5f9}
+.scenario-prob{font-size:1.5rem;font-weight:800}
+.prob-bar{height:6px;background:#1e293b;border-radius:3px;overflow:hidden;margin:8px 0 12px}
+.prob-fill{height:100%;border-radius:3px;transition:width .8s ease}
+.scenario-desc{font-size:.88rem;color:var(--text-muted);margin-bottom:10px;line-height:1.5}
+.scenario-reason{font-size:.82rem;color:#94a3b8;background:rgba(139,92,246,.08);border-left:3px solid #8b5cf6;padding:8px 12px;border-radius:0 6px 6px 0;line-height:1.5}
+/* Agent detail cards */
+.agent-detail{background:#0f172a;border:1px solid var(--border-color);border-radius:10px;padding:14px;margin-bottom:10px}
+.agent-detail h4{font-size:.8rem;text-transform:uppercase;color:var(--accent-blue);letter-spacing:1px;margin:0 0 10px;display:flex;align-items:center;gap:6px}
+.agent-tag{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.75rem;font-weight:600;margin:2px}
+.tag-weapon{background:rgba(239,68,68,.15);color:#f87171}
+.tag-bio{background:rgba(245,158,11,.15);color:#fbbf24}
+.tag-entry{background:rgba(59,130,246,.15);color:#60a5fa}
+.tag-crime{background:rgba(139,92,246,.15);color:#a78bfa}
+.tag-entity{background:rgba(16,185,129,.15);color:#34d399}
+/* Status badge */
+.status-badge{padding:5px 14px;border-radius:20px;font-size:.75rem;font-weight:600;letter-spacing:.5px}
+/* Tabs */
+.tab-bar{display:flex;gap:4px;margin-bottom:16px;background:#0b1120;border-radius:8px;padding:4px}
+.tab-btn{flex:1;padding:8px;text-align:center;font-size:.8rem;font-weight:600;color:var(--text-muted);background:transparent;border:none;border-radius:6px;cursor:pointer;transition:.2s}
+.tab-btn.active{background:rgba(59,130,246,.2);color:var(--accent-blue)}
+.tab-content{display:none}.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .4s ease forwards}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite}
+.empty-state{text-align:center;padding:40px;color:var(--text-muted)}
+.empty-state i{font-size:3rem;margin-bottom:12px;opacity:.3}
+</style>
+
+<div class="eis-header">
+  <div>
+    <div class="eis-title">EVIDENCE <span style="font-weight:300;opacity:.6">INTELLIGENCE</span></div>
+    <div class="eis-sub">MULTI-AGENT AI CRIME SCENE PREDICTION SYSTEM</div>
+  </div>
+  <div id="statusBadge" class="status-badge" style="background:rgba(148,163,184,.1);color:var(--text-muted)">AWAITING INPUT</div>
+</div>
+
+<div class="eis-grid">
+  <!-- LEFT: INPUT -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="eis-card">
+      <h3 style="color:var(--accent-blue)"><i class="fas fa-file-alt"></i> FIR Narrative Input</h3>
+      <select id="firSelect" onchange="loadFIR()" class="eis-input" style="margin-bottom:10px">
+        <option value="">— Select existing FIR or type below —</option>
+        {% for f in firs %}<option value="{{f.id}}">{{f.fir_number}} — {{f.title}}</option>{% endfor %}
+      </select>
+      <textarea id="firText" class="eis-input" rows="4" placeholder="Enter FIR narrative / incident description..." style="resize:vertical;margin-bottom:10px"></textarea>
+      <div class="eis-row">
+        <input id="firLoc" class="eis-input" placeholder="Location (e.g. market, alley)">
+        <input id="firTime" class="eis-input" placeholder="Time (e.g. 22:30, night)">
+      </div>
+    </div>
+
+    <div class="eis-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="color:var(--accent-green);margin:0"><i class="fas fa-microscope"></i> Digital Evidence</h3>
+        <button class="add-ev-btn" onclick="addEvidence()">+ Add Evidence</button>
+      </div>
+      <div id="evList" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <button id="runBtn" class="eis-btn" onclick="runAnalysis()">
+      <i class="fas fa-robot"></i>&nbsp; Launch Multi-Agent Analysis
+    </button>
+
+    <!-- Agent Architecture -->
+    <div class="eis-card" style="border-color:rgba(139,92,246,.3)">
+      <h3 style="color:#a78bfa"><i class="fas fa-project-diagram"></i> Agent Architecture</h3>
+      <div style="font-size:.78rem;color:var(--text-muted);line-height:1.7">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="agent-tag tag-crime">🧠 FIR Analyzer</div>
+          <div class="agent-tag tag-weapon">👁 Vision Agent</div>
+          <div class="agent-tag tag-bio">🔬 Forensic Agent</div>
+          <div class="agent-tag tag-entry">🕸 Knowledge Graph</div>
+          <div class="agent-tag tag-entity">⚡ Inference Engine</div>
+          <div class="agent-tag" style="background:rgba(248,250,252,.1);color:#f1f5f9">🎯 Orchestrator</div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-color);font-size:.75rem">
+          6 specialized agents collaborate via the Orchestrator to produce ranked crime scenarios with probabilistic confidence scoring.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <!-- Pipeline Monitor -->
+    <div class="eis-card" id="pipelineCard">
+      <h3 style="color:#a78bfa"><i class="fas fa-wave-square"></i> Agent Pipeline Monitor</h3>
+      <div id="pipelineSteps">
+        <div class="empty-state"><i class="fas fa-robot"></i><div>Launch analysis to see agent pipeline</div></div>
+      </div>
+    </div>
+
+    <!-- Results tabs -->
+    <div class="eis-card" id="resultsCard" style="display:none;flex:1">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('scenarios',this)">🎯 Scenarios</button>
+        <button class="tab-btn" onclick="switchTab('agents',this)">🧠 Agent Details</button>
+        <button class="tab-btn" onclick="switchTab('trace',this)">📋 Reasoning Trace</button>
+      </div>
+
+      <div id="tab-scenarios" class="tab-content active"></div>
+      <div id="tab-agents" class="tab-content"></div>
+      <div id="tab-trace" class="tab-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const firStore = {
+  {% for f in firs %}
+  "{{ f.id }}": {
+    text: {{ f.description | tojson }},
+    loc: {{ (f.location_text or "") | tojson }},
+    time: "{{ (f.incident_time | string) if f.incident_time else '' }}",
+    ev: {{ (f.evidence_summary or "") | tojson }}
+  },
+  {% endfor %}
+};
+
+function loadFIR(){
+  const v=document.getElementById('firSelect').value;
+  if(v&&firStore[v]){const d=firStore[v];document.getElementById('firText').value=d.text||'';document.getElementById('firLoc').value=d.loc||'';document.getElementById('firTime').value=d.time||'';
+    if(d.ev){const el=document.querySelector('.ev-ctx');if(el&&!el.value)el.value=d.ev;}
+  }else{document.getElementById('firText').value='';document.getElementById('firLoc').value='';document.getElementById('firTime').value='';}
+}
+
+function addEvidence(){
+  const c=document.getElementById('evList');
+  const d=document.createElement('div');d.className='ev-item fade-in';
+  const id='ev-'+Math.random().toString(36).substr(2,9);
+  d.innerHTML=`<div class="ev-row"><select class="ev-type" onchange="updateEvidenceUI(this)"><option value="report">📄 Report</option><option value="image">📷 Image</option><option value="video">🎥 Video</option><option value="audio">🎙️ Audio</option></select><input class="ev-desc" placeholder="Evidence title"><button class="ev-del" onclick="this.closest('.ev-item').remove()"><i class="fas fa-times"></i></button></div><input class="ev-ctx" placeholder="Description" style="width:100%;margin-bottom:8px;background:var(--card-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;padding:6px 8px;font-size:.85rem"><div class="ev-file-section" style="display:none;margin-bottom:8px"><label style="font-size:.75rem;color:var(--text-muted);margin-bottom:4px;display:block">Upload File:</label><input type="file" id="${id}" class="ev-file" accept="image/*,video/*,audio/*" style="width:100%;font-size:.8rem;cursor:pointer"><div class="ev-preview" style="margin-top:6px;font-size:.75rem;color:var(--accent-green)"></div></div>`;
+  c.appendChild(d);
+}
+
+function updateEvidenceUI(select){
+  const item=select.closest('.ev-item');
+  const fileSection=item.querySelector('.ev-file-section');
+  if(select.value==='image'||select.value==='video'||select.value==='audio'){
+    fileSection.style.display='block';
+  }else{
+    fileSection.style.display='none';
+  }
+}
+
+function getBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result.split(',')[1]);
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+addEvidence();
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function getColor(p){if(p>=.6)return'#10b981';if(p>=.35)return'#f59e0b';return'#ef4444';}
+
+async function runAnalysis(){
+  const btn=document.getElementById('runBtn');
+  const badge=document.getElementById('statusBadge');
+  const firText=document.getElementById('firText').value.trim();
+  if(!firText){alert('Please enter FIR details.');return;}
+
+  const loc=document.getElementById('firLoc').value||'unknown';
+  const time=document.getElementById('firTime').value||'unknown';
+  const evEls=document.getElementById('evList').children;
+  const evidence=[];
+  
+  // Process each evidence item with file uploads
+  for(let i=0;i<evEls.length;i++){
+    const el=evEls[i];
+    const evType=el.querySelector('.ev-type').value;
+    const evDesc=el.querySelector('.ev-desc').value;
+    const evCtx=el.querySelector('.ev-ctx').value;
+    const fileInput=el.querySelector('.ev-file');
+    
+    let evData={type:evType,description:evDesc,text:evCtx};
+    
+    // If file is present, encode to base64
+    if(fileInput&&fileInput.files.length>0){
+      try{
+        const file=fileInput.files[0];
+        const b64=await getBase64(file);
+        evData.image_base64=b64;
+      }catch(e){
+        console.error('File read error:',e);
+      }
+    }
+    evidence.push(evData);
+  }
+
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Agents Processing...';
+  badge.style.background='rgba(59,130,246,.2)';badge.style.color='var(--accent-blue)';badge.textContent='PROCESSING';
+
+  // Simulate pipeline steps appearing
+  const pipeDiv=document.getElementById('pipelineSteps');
+  pipeDiv.innerHTML='';
+  const stages=[
+    {agent:'ORCHESTRATOR',msg:'Initializing multi-agent pipeline...',icon:'fa-sitemap'},
+    {agent:'FIR_ANALYZER',msg:'Extracting entities & crime indicators from narrative...',icon:'fa-file-alt'},
+    {agent:'VISION_AGENT',msg:'Scanning evidence for visual objects (YOLO)...',icon:'fa-eye'},
+    {agent:'FORENSIC_AGENT',msg:'Applying forensic interpretation rules...',icon:'fa-microscope'},
+    {agent:'KNOWLEDGE_GRAPH',msg:'Traversing crime-evidence-location graph...',icon:'fa-project-diagram'},
+    {agent:'INFERENCE_ENGINE',msg:'Synthesizing signals → ranking scenarios...',icon:'fa-brain'},
+  ];
+
+  for(let i=0;i<stages.length;i++){
+    await new Promise(r=>setTimeout(r,400));
+    const s=stages[i];
+    const step=document.createElement('div');step.className='pipe-step running fade-in';
+    step.innerHTML=`<div class="icon"><i class="fas ${s.icon}"></i></div><div><div class="agent-name">${s.agent}</div><div class="agent-msg">${s.msg}</div></div>`;
+    pipeDiv.appendChild(step);
+    if(i>0){const prev=pipeDiv.children[i-1];prev.classList.remove('running');prev.classList.add('done');prev.querySelector('.icon i').className='fas fa-check';}
+  }
+
+  try{
+    const res=await fetch('/api/evidence-analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fir_text:firText,location:loc,time:time,evidence:evidence})});
+    if(!res.ok)throw new Error('API error');
+    const data=await res.json();
+
+    // Mark last step done
+    const last=pipeDiv.lastElementChild;if(last){last.classList.remove('running');last.classList.add('done');last.querySelector('.icon i').className='fas fa-check';}
+    // Add complete step
+    const fin=document.createElement('div');fin.className='pipe-step done fade-in';
+    fin.innerHTML='<div class="icon" style="background:rgba(16,185,129,.2);color:var(--accent-green)"><i class="fas fa-check-double"></i></div><div><div class="agent-name" style="color:var(--accent-green)">COMPLETE</div><div class="agent-msg">All agents reported — '+data.scenarios.length+' scenario(s) generated</div></div>';
+    pipeDiv.appendChild(fin);
+
+    renderResults(data);
+    document.getElementById('resultsCard').style.display='block';
+    badge.style.background='rgba(16,185,129,.2)';badge.style.color='var(--accent-green)';badge.textContent='ANALYSIS COMPLETE';
+  }catch(e){
+    console.error(e);alert('Analysis failed. Check backend.');
+    badge.style.background='rgba(239,68,68,.2)';badge.style.color='var(--accent-red)';badge.textContent='ERROR';
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i>&nbsp; Launch Multi-Agent Analysis';
+  }
+}
+
+function renderResults(data){
+  // Scenarios tab
+  const sc=document.getElementById('tab-scenarios');sc.innerHTML='';
+  if(!data.scenarios||data.scenarios.length===0){sc.innerHTML='<div class="empty-state"><i class="fas fa-search"></i><div>No scenarios generated. Try adding more details.</div></div>';return;}
+
+  data.scenarios.forEach((s,i)=>{
+    const pct=Math.round(s.probability*100);const col=getColor(s.probability);
+    const card=document.createElement('div');card.className='scenario-card fade-in';card.style.animationDelay=(i*0.1)+'s';
+    card.innerHTML=`<div class="rank">#${i+1}</div>
+      <div class="scenario-header"><div class="scenario-type">${s.crime_type}</div><div class="scenario-prob" style="color:${col}">${pct}%</div></div>
+      <div class="prob-bar"><div class="prob-fill" style="width:${pct}%;background:linear-gradient(90deg,${col},${col}88)"></div></div>
+      <div class="scenario-desc">${s.description}</div>
+      <div class="scenario-reason"><strong>Reasoning:</strong> ${s.reasoning}</div>`;
+    sc.appendChild(card);
+  });
+
+  // Agent details tab
+  const ag=document.getElementById('tab-agents');ag.innerHTML='';
+  const det=data.agent_details||{};
+
+  // FIR Analyzer
+  if(det.fir_analyzer){
+    let h='<div class="agent-detail"><h4><i class="fas fa-file-alt"></i> FIR Analyzer Agent</h4>';
+    const ci=det.fir_analyzer.crime_indicators||{};
+    h+='<div style="margin-bottom:8px;font-size:.8rem;color:var(--text-muted)">Crime Indicators:</div>';
+    for(const[k,v]of Object.entries(ci))h+=`<span class="agent-tag tag-crime">${k} (${(v.strength*100).toFixed(0)}%)</span> `;
+    const ent=det.fir_analyzer.entities||{};
+    h+='<div style="margin-top:10px;margin-bottom:6px;font-size:.8rem;color:var(--text-muted)">Extracted Entities:</div>';
+    for(const[k,v]of Object.entries(ent))h+=`<span class="agent-tag tag-entity">${k}: ${v.join(', ')}</span> `;
+    h+=`<div style="margin-top:8px;font-size:.8rem"><span class="agent-tag tag-entry">Time: ${det.fir_analyzer.time_period}</span></div></div>`;
+    ag.innerHTML+=h;
+  }
+
+  // Vision Agent
+  if(det.vision_agent){
+    let h='<div class="agent-detail"><h4><i class="fas fa-eye"></i> Vision Agent (YOLO Simulation)</h4>';
+    const dets=det.vision_agent.detections||[];
+    if(dets.length===0)h+='<div style="font-size:.85rem;color:var(--text-muted)">No visual objects detected</div>';
+    else dets.forEach(d=>{h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div><span class="agent-tag tag-weapon">${d.object}</span><span style="font-size:.75rem;color:var(--text-muted);margin-left:8px">${d.category} • ${d.severity}</span></div><div style="font-weight:700;color:${getColor(d.confidence)}">${(d.confidence*100).toFixed(0)}%</div></div>`;});
+    h+='</div>';ag.innerHTML+=h;
+  }
+
+  // Forensic Agent
+  if(det.forensic_agent){
+    let h='<div class="agent-detail"><h4><i class="fas fa-microscope"></i> Forensic Agent</h4>';
+    const vc=getColor(1-det.forensic_agent.violence_score);
+    h+=`<div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-size:.85rem">Violence Level</span><span style="font-weight:700;color:${det.forensic_agent.violence_level==='critical'||det.forensic_agent.violence_level==='high'?'#ef4444':'#f59e0b'}">${det.forensic_agent.violence_level.toUpperCase()} (${(det.forensic_agent.violence_score*100).toFixed(0)}%)</span></div>`;
+    (det.forensic_agent.interpretations||[]).forEach(i=>{h+=`<div style="font-size:.82rem;padding:4px 0;color:var(--text-muted)"><span class="agent-tag tag-bio">${i.marker}</span> ${i.interpretation}</div>`;});
+    h+='</div>';ag.innerHTML+=h;
+  }
+
+  // Knowledge Graph
+  if(det.knowledge_graph){
+    let h='<div class="agent-detail"><h4><i class="fas fa-project-diagram"></i> Knowledge Graph Agent</h4>';
+    h+=`<div style="font-size:.82rem;color:var(--text-muted);margin-bottom:8px">${det.knowledge_graph.total_nodes} nodes • ${det.knowledge_graph.total_edges} edges</div>`;
+    const gs=det.knowledge_graph.graph_scores||{};
+    const sorted=Object.entries(gs).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    sorted.forEach(([k,v])=>{const w=Math.min(v/Math.max(...Object.values(gs))*100,100);h+=`<div style="margin-bottom:4px;display:flex;align-items:center;gap:8px"><span style="width:80px;font-size:.8rem;color:var(--text-muted)">${k}</span><div style="flex:1;height:6px;background:#1e293b;border-radius:3px;overflow:hidden"><div style="width:${w}%;height:100%;background:var(--accent-blue);border-radius:3px"></div></div><span style="font-size:.75rem;font-weight:600;width:40px;text-align:right">${v.toFixed(2)}</span></div>`;});
+    h+='</div>';ag.innerHTML+=h;
+  }
+
+  // Trace tab
+  const tr=document.getElementById('tab-trace');tr.innerHTML='';
+  const traces=data.reasoning_trace||[];
+  if(traces.length===0){tr.innerHTML='<div class="empty-state">No reasoning trace available</div>';return;}
+  let th='<div style="max-height:400px;overflow-y:auto;font-size:.82rem;font-family:monospace">';
+  traces.forEach(t=>{th+=`<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="color:var(--accent-blue);font-weight:600">[${t.agent}]</span> <span style="color:var(--text-muted)">${t.message}</span></div>`;});
+  th+='</div>';tr.innerHTML=th;
+}
+</script>
+{% endblock %}

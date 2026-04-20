@@ -137,6 +137,59 @@ app.add_middleware(
     secret_key=os.getenv("CIRIS_SECRET_KEY", "super-secret-change-this")
 )
 
+from fastapi.responses import HTMLResponse
+import json
+
+@app.get("/evidence", response_class=HTMLResponse)
+def evidence_page(request: Request, db: Session = Depends(get_db)):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+
+    firs = db.query(FIR).order_by(FIR.id.desc()).all()
+    return templates.TemplateResponse("evidence.html", {
+        "request": request,
+        "firs": firs
+    })
+
+from .agents import run_evidence_analysis
+
+from fastapi import Request
+
+@app.post("/api/evidence-analyze")
+async def api_evidence_analyze(request: Request):
+    data = await request.json()
+
+    fir_text = data.get("fir_text", "")
+    location = data.get("location", "")
+    time = data.get("time", "")
+    evidence = data.get("evidence", [])
+
+    # Convert to your agent format
+    evidence_dicts = [
+        {
+            "type": ev.get("type"),
+            "description": ev.get("description", ""),
+            "text": ev.get("text", "")
+        }
+        for ev in evidence
+    ]
+
+
+    result = run_evidence_analysis(fir_text, location, time, evidence_dicts)
+
+    return result
+
+@app.get("/monitoring", response_class=HTMLResponse)
+def monitoring_page(request: Request):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+
+    return templates.TemplateResponse("monitoring.html", {
+        "request": request
+    })
+
 @app.middleware("http")
 async def add_coop_headers(request: Request, call_next):
     response = await call_next(request)
