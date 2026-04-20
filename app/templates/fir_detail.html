@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">FIR <span style="font-weight: 300; opacity: 0.6;">DETAILS</span></h1>
+        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">
+            COMPREHENSIVE INCIDENT INFORMATION
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="/firs/{{ fir.id }}/edit" class="btn-primary-custom">
+            <i class="fas fa-edit"></i> Edit FIR
+        </a>
+        <a href="/firs" class="btn-secondary-custom">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<!-- FIR Header -->
+<div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <div>
+            <div style="font-weight: 700; color: var(--accent-blue); font-size: 1.1rem; font-family: monospace;">{{ fir.fir_number }}</div>
+            <h2 style="margin: 6px 0 8px; font-size: 1.4rem; font-weight: 700;">{{ fir.title }}</h2>
+            <div style="font-size: 0.9rem; color: var(--text-muted);">{{ fir.station_name }} • {{ fir.district }}</div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="padding: 6px 14px; border-radius: 8px; font-size: .8rem; font-weight: 700;
+                {% if fir.priority == 'Critical' %}background:rgba(239,68,68,.18);color:#ef4444;
+                {% elif fir.priority == 'High' %}background:rgba(245,158,11,.18);color:#f59e0b;
+                {% elif fir.priority == 'Medium' %}background:rgba(59,130,246,.18);color:#3b82f6;
+                {% else %}background:rgba(16,185,129,.18);color:#10b981;{% endif %}">
+                {{ fir.priority }}
+            </span>
+            <span style="padding: 6px 14px; border-radius: 8px; font-size: .8rem; font-weight: 700; background: rgba(255,255,255,.07); color: #cbd5e1;">
+                {{ fir.status }}
+            </span>
+        </div>
+    </div>
+    <div style="display: flex; gap: 20px; font-size: 0.85rem; color: var(--text-muted);">
+        <span><i class="fas fa-calendar"></i> Incident: {{ fir.incident_date }}{% if fir.incident_time %} at {{ fir.incident_time }}{% endif %}</span>
+        {% if fir.reported_at %}
+        <span><i class="fas fa-clock"></i> Reported: {{ fir.reported_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+
+    <!-- Left Column: Details -->
+    <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px;">
+        <h3 style="margin-bottom: 20px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">INCIDENT DETAILS</h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+                <div class="detail-label">Crime Type</div>
+                <div class="detail-value">{{ fir.crime_type or '—' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Legal Section(s)</div>
+                <div class="detail-value">{{ fir.legal_section or '—' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Complainant</div>
+                <div class="detail-value">{{ fir.complainant_name or '—' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Accused</div>
+                <div class="detail-value">{{ fir.accused_name or '—' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Location</div>
+                <div class="detail-value">{{ fir.location_text or '—' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Weapon Used</div>
+                <div class="detail-value">{{ fir.weapon_used or '—' }}</div>
+            </div>
+            {% if fir.victim_age %}
+            <div>
+                <div class="detail-label">Victim Age</div>
+                <div class="detail-value">{{ fir.victim_age }}</div>
+            </div>
+            {% endif %}
+            {% if fir.victim_gender %}
+            <div>
+                <div class="detail-label">Victim Gender</div>
+                <div class="detail-value">{{ fir.victim_gender }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 24px;">
+            <div class="detail-label">Description</div>
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-top: 8px; font-size: 0.9rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap;">
+                {{ fir.description or 'No description provided.' }}
+            </div>
+        </div>
+
+        {% if fir.evidence_summary %}
+        <div style="margin-top: 20px;">
+            <div class="detail-label">Evidence Summary</div>
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-top: 8px; font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
+                {{ fir.evidence_summary }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if fir.tags %}
+        <div style="margin-top: 20px;">
+            <div class="detail-label">Tags</div>
+            <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px;">
+                {% for tag in fir.tags.split(',') %}
+                <span style="background: rgba(99,102,241,.18); color: #818cf8; padding: 4px 12px; border-radius: 6px; font-size: .8rem; font-weight: 500;">{{ tag.strip() }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if fir.raw_fir_text %}
+        <div style="margin-top: 20px;">
+            <div class="detail-label">Raw FIR Text</div>
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-top: 8px; font-size: 0.85rem; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+                {{ fir.raw_fir_text }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Image and Metadata -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+
+        <!-- FIR Image -->
+        <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px;">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">DOCUMENT IMAGE</h3>
+            {% if fir.image_path %}
+            <img src="/static/{{ fir.image_path }}" style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;" alt="FIR Document">
+            {% else %}
+            <div style="background: var(--card-bg); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--border-color); color: var(--text-muted);">
+                <div style="text-align: center;">
+                    <i class="fas fa-image" style="font-size: 2rem; margin-bottom: 8px; display: block; opacity: .3;"></i>
+                    <div>No document image available</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Metadata -->
+        <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px;">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">METADATA</h3>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+                <div>
+                    <span style="color: var(--text-muted);">Created:</span>
+                    <span style="color: var(--text-main);">{{ fir.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted);">Last Updated:</span>
+                    <span style="color: var(--text-main);">{{ fir.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted);">ID:</span>
+                    <span style="color: var(--text-main); font-family: monospace;">{{ fir.id }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px;">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">QUICK ACTIONS</h3>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <a href="/firs/{{ fir.id }}/edit" style="background: rgba(59,130,246,.15); color: #3b82f6; border: none; border-radius: 6px; padding: 10px 16px; text-decoration: none; text-align: center; font-weight: 500;">
+                    <i class="fas fa-edit"></i> Edit FIR
+                </a>
+                <button onclick="printFIR()" style="background: rgba(16,185,129,.15); color: #10b981; border: none; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-print"></i> Print FIR
+                </button>
+                <form method="post" action="/firs/{{ fir.id }}/delete" onsubmit="return confirm('Are you sure you want to delete FIR {{ fir.fir_number }}? This action cannot be undone.');" style="margin: 0;">
+                    <button type="submit" style="background: rgba(239,68,68,.15); color: #ef4444; border: none; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: 500; width: 100%;">
+                        <i class="fas fa-trash"></i> Delete FIR
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .detail-label {
+        font-size: .68rem;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .detail-value {
+        font-size: .9rem;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+    .detail-value:empty::after {
+        content: '—';
+        color: var(--text-muted);
+    }
+    .btn-secondary-custom {
+        background: var(--card-bg);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .btn-secondary-custom:hover {
+        background: var(--border-color);
+    }
+</style>
+
+<script>
+function printFIR() {
+    window.print();
+}
+</script>
+
+{% endblock %}
