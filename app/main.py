@@ -6,6 +6,10 @@ from typing import Optional
 import threading
 import time as time_module
 from collections import deque
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 import cv2
 from ultralytics import YOLO
@@ -25,6 +29,50 @@ from .models import FIR
 from .classifier import classify_crime_type
 import PIL.Image
 import io
+
+# Firebase Admin SDK
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth as firebase_auth
+    HAS_FIREBASE = True
+    
+    # Firebase project ID - from environment or hardcoded
+    FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "ciris-493917")
+    
+    # Try to initialize Firebase Admin SDK
+    try:
+        # Try to load Firebase credentials from environment or file
+        firebase_cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", None)
+        if firebase_cred_path and os.path.exists(firebase_cred_path):
+            print(f"Loading Firebase credentials from: {firebase_cred_path}")
+            cred = credentials.Certificate(firebase_cred_path)
+            firebase_admin.initialize_app(cred, options={"projectId": FIREBASE_PROJECT_ID})
+            print(f"Firebase initialized with credentials file. Project ID: {FIREBASE_PROJECT_ID}")
+        else:
+            # Initialize with default credentials and explicit project ID
+            # This works on Google Cloud or with Application Default Credentials
+            try:
+                firebase_admin.initialize_app(options={"projectId": FIREBASE_PROJECT_ID})
+                print(f"Firebase initialized with default credentials. Project ID: {FIREBASE_PROJECT_ID}")
+            except ValueError as ve:
+                # App already initialized
+                if "already exists" in str(ve):
+                    print(f"Firebase app already initialized. Project ID: {FIREBASE_PROJECT_ID}")
+                else:
+                    raise
+    except Exception as init_error:
+        print(f"Firebase initialization error: {init_error}")
+        print("Firebase authentication will not be available. Download service account key from Firebase Console.")
+        HAS_FIREBASE = False
+        
+except ImportError:
+    print("Firebase Admin SDK not installed")
+    HAS_FIREBASE = False
+    firebase_auth = None  # type: ignore
+except Exception as e:
+    print(f"Firebase Admin SDK error: {e}")
+    HAS_FIREBASE = False
+    firebase_auth = None  # type: ignore
 
 # Optional dependency (Gemini OCR). App should still run without it.
 try:
@@ -1182,6 +1230,94 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
+
+
+# ═══════════════════════════════════════════════════════════════
+#   FIREBASE AUTH ENDPOINTS
+# ═══════════════════════════════════════════════════════════════
+
+@app.post("/api/verify-firebase-token")
+async def verify_firebase_token(request: Request, data: dict):
+    """Verify Firebase ID token and create session"""
+    if not HAS_FIREBASE or firebase_auth is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Firebase authentication service is unavailable. Please ensure Firebase Admin SDK is properly configured."}
+        )
+    
+    try:
+        token = data.get("token")
+        email = data.get("email")
+        
+        if not token or not email:
+            return JSONResponse(status_code=400, content={"error": "Missing token or email"})
+        
+        # Verify token with Firebase
+        try:
+            decoded_token = firebase_auth.verify_id_token(token)
+        except Exception as verify_error:
+            print(f"Token verification error: {verify_error}")
+            return JSONResponse(
+                status_code=401,
+                content={"error": f"Invalid authentication token: {str(verify_error)}"}
+            )
+        
+        # Create session
+        request.session["user"] = email
+        request.session["firebase_uid"] = decoded_token.get("uid")
+        request.session["user_email"] = email
+        
+        return JSONResponse(status_code=200, content={"success": True, "message": "Logged in successfully"})
+    
+    except Exception as e:
+        print(f"Verify token error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Authentication service error: {str(e)}"}
+        )
+
+
+@app.post("/api/register-firebase-user")
+async def register_firebase_user(request: Request, data: dict):
+    """Register new Firebase user and create session"""
+    if not HAS_FIREBASE or firebase_auth is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Firebase authentication service is unavailable. Please ensure Firebase Admin SDK is properly configured."}
+        )
+    
+    try:
+        token = data.get("token")
+        email = data.get("email")
+        name = data.get("name")
+        
+        if not token or not email or not name:
+            return JSONResponse(status_code=400, content={"error": "Missing required fields"})
+        
+        # Verify token with Firebase
+        try:
+            decoded_token = firebase_auth.verify_id_token(token)
+        except Exception as verify_error:
+            print(f"Token verification error during registration: {verify_error}")
+            return JSONResponse(
+                status_code=401,
+                content={"error": f"Invalid authentication token: {str(verify_error)}"}
+            )
+        
+        # Create session
+        request.session["user"] = email
+        request.session["firebase_uid"] = decoded_token.get("uid")
+        request.session["user_email"] = email
+        request.session["user_name"] = name
+        
+        return JSONResponse(status_code=200, content={"success": True, "message": "Account created successfully"})
+    
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Registration service error: {str(e)}"}
+        )
 
 
 # ═══════════════════════════════════════════════════════════════

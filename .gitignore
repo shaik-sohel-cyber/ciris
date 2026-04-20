@@ -27,3 +27,10 @@ nb_output.txt
 error_new.txt
 error_parsed.txt
 error_parsed2.txt
+
+# Firebase and Environment
+firebase-credentials.json
+firebase-admin-*.json
+.env
+.env.local
+.env.*.local

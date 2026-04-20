@@ -7,3 +7,6 @@ opencv-python
 ultralytics
 pytesseract
 pillow
+firebase-admin
+python-jose[cryptography]
+python-dotenv
