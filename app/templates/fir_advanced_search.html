@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">FIR <span style="font-weight: 300; opacity: 0.6;">ADVANCED SEARCH</span></h1>
+        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">
+            COMPREHENSIVE CASE SEARCH AND FILTERING
+        </div>
+    </div>
+    <a href="/firs" class="btn-secondary-custom">
+        <i class="fas fa-arrow-left"></i> Back to FIR List
+    </a>
+</div>
+
+<div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px;">
+    <form method="post" action="/firs/advanced-search" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px;">
+
+        <!-- FIR Details -->
+        <div style="grid-column: span 3;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">FIR Number</label>
+            <input type="text" name="fir_number" placeholder="e.g., FIR-2026-0001" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 6;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Title</label>
+            <input type="text" name="title" placeholder="Search in FIR titles..." style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 3;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Priority</label>
+            <select name="priority" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+                <option value="">All Priorities</option>
+                {% for p in priorities %}
+                <option value="{{ p }}">{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Location & Station -->
+        <div style="grid-column: span 4;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">District</label>
+            <select name="district" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+                <option value="">All Districts</option>
+                {% for d in districts %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="grid-column: span 4;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Police Station</label>
+            <input type="text" name="station_name" placeholder="Station name..." style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 4;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Status</label>
+            <select name="status" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+                <option value="">All Statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Crime & People -->
+        <div style="grid-column: span 4;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Crime Type</label>
+            <select name="crime_type" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+                <option value="">All Crime Types</option>
+                {% for ct in crime_types %}
+                <option value="{{ ct }}">{{ ct }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="grid-column: span 4;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Complainant</label>
+            <input type="text" name="complainant_name" placeholder="Complainant name..." style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 4;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Accused</label>
+            <input type="text" name="accused_name" placeholder="Accused name..." style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+
+        <!-- Date Ranges -->
+        <div style="grid-column: span 3;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Incident Date From</label>
+            <input type="date" name="incident_date_from" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 3;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Incident Date To</label>
+            <input type="date" name="incident_date_to" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 3;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Reported Date From</label>
+            <input type="date" name="reported_date_from" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+        <div style="grid-column: span 3;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Reported Date To</label>
+            <input type="date" name="reported_date_to" style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+
+        <!-- Description Search -->
+        <div style="grid-column: span 12;">
+            <label style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px;">Description Contains</label>
+            <input type="text" name="description_contains" placeholder="Search within FIR descriptions..." style="width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px;">
+        </div>
+
+        <!-- Submit -->
+        <div style="grid-column: span 12; display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+            <button type="submit" class="btn-primary-custom" style="padding: 12px 40px;">
+                <i class="fas fa-search"></i> Search FIRs
+            </button>
+            <button type="reset" class="btn-secondary-custom" style="padding: 12px 40px;">
+                <i class="fas fa-undo"></i> Clear Filters
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .btn-secondary-custom {
+        background: var(--card-bg);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .btn-secondary-custom:hover {
+        background: var(--border-color);
+    }
+</style>
+{% endblock %}

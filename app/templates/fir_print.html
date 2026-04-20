@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIR Report - {{ fir.fir_number }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            .page-break { page-break-before: always; }
+        }
+
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12px;
+            line-height: 1.4;
+            margin: 20px;
+            background: white;
+            color: black;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .header h2 {
+            font-size: 14px;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+
+        .fir-number {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            border: 2px solid #000;
+            background: #f0f0f0;
+        }
+
+        .section {
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 13px;
+            text-decoration: underline;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .field-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .field-label {
+            display: table-cell;
+            width: 30%;
+            font-weight: bold;
+            padding-right: 10px;
+        }
+
+        .field-value {
+            display: table-cell;
+            width: 70%;
+            border-bottom: 1px dotted #999;
+            padding: 2px 0;
+        }
+
+        .description-box {
+            border: 1px solid #000;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 60px;
+            white-space: pre-wrap;
+        }
+
+        .signature-section {
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+        }
+
+        .signature-left, .signature-right {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 40px;
+            padding-top: 5px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 1px solid #000;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 1px solid #000;
+            background: #000;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .no-print {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            🖨️ Print FIR Report
+        </button>
+        <a href="/firs/{{ fir.id }}" style="margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px;">← Back to Details</a>
+    </div>
+
+    <div class="header">
+        <h1>FIRST INFORMATION REPORT</h1>
+        <h2>{{ fir.station_name }}</h2>
+        <div>District: {{ fir.district }}</div>
+    </div>
+
+    <div class="fir-number">
+        FIR No: {{ fir.fir_number }}
+        <span class="priority-badge">{{ fir.priority }}</span>
+        <span class="status-badge">{{ fir.status }}</span>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Incident Details</div>
+        <div class="field-row">
+            <div class="field-label">Date & Time of Incident:</div>
+            <div class="field-value">{{ fir.incident_date }}{% if fir.incident_time %} at {{ fir.incident_time }}{% endif %}</div>
+        </div>
+        <div class="field-row">
+            <div class="field-label">Place of Occurrence:</div>
+            <div class="field-value">{{ fir.location_text or 'Not specified' }}</div>
+        </div>
+        <div class="field-row">
+            <div class="field-label">Crime Type:</div>
+            <div class="field-value">{{ fir.crime_type or 'Not classified' }}</div>
+        </div>
+        <div class="field-row">
+            <div class="field-label">Legal Sections:</div>
+            <div class="field-value">{{ fir.legal_section or 'Not specified' }}</div>
+        </div>
+        {% if fir.weapon_used %}
+        <div class="field-row">
+            <div class="field-label">Weapon Used:</div>
+            <div class="field-value">{{ fir.weapon_used }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <div class="section-title">Parties Involved</div>
+        <div class="field-row">
+            <div class="field-label">Complainant Name:</div>
+            <div class="field-value">{{ fir.complainant_name or 'Not specified' }}</div>
+        </div>
+        {% if fir.complainant_mobile %}
+        <div class="field-row">
+            <div class="field-label">Complainant Mobile:</div>
+            <div class="field-value">{{ fir.complainant_mobile }}</div>
+        </div>
+        {% endif %}
+        {% if fir.complainant_email %}
+        <div class="field-row">
+            <div class="field-label">Complainant Email:</div>
+            <div class="field-value">{{ fir.complainant_email }}</div>
+        </div>
+        {% endif %}
+        {% if fir.complainant_address %}
+        <div class="field-row">
+            <div class="field-label">Complainant Address:</div>
+            <div class="field-value">{{ fir.complainant_address }}</div>
+        </div>
+        {% endif %}
+        <div class="field-row">
+            <div class="field-label">Accused/Suspect:</div>
+            <div class="field-value">{{ fir.accused_name or 'Unknown' }}</div>
+        </div>
+        {% if fir.victim_age %}
+        <div class="field-row">
+            <div class="field-label">Victim Age:</div>
+            <div class="field-value">{{ fir.victim_age }}</div>
+        </div>
+        {% endif %}
+        {% if fir.victim_gender %}
+        <div class="field-row">
+            <div class="field-label">Victim Gender:</div>
+            <div class="field-value">{{ fir.victim_gender }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if fir.property_details %}
+    <div class="section">
+        <div class="section-title">Property/Stolen Items</div>
+        <div class="field-row">
+            <div class="field-label">Property Details:</div>
+            <div class="field-value">{{ fir.property_details }}</div>
+        </div>
+        {% if fir.property_value %}
+        <div class="field-row">
+            <div class="field-label">Estimated Value:</div>
+            <div class="field-value">₹{{ fir.property_value }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <div class="section-title">Incident Description</div>
+        <div class="description-box">
+            {{ fir.description or 'No description provided.' }}
+        </div>
+    </div>
+
+    {% if fir.evidence_summary %}
+    <div class="section">
+        <div class="section-title">Evidence Summary</div>
+        <div class="description-box">
+            {{ fir.evidence_summary }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if fir.tags %}
+    <div class="section">
+        <div class="section-title">Tags/Keywords</div>
+        <div class="field-value">{{ fir.tags }}</div>
+    </div>
+    {% endif %}
+
+    <div class="signature-section">
+        <div class="signature-left">
+            <div class="signature-line">
+                Investigating Officer<br>
+                {{ fir.evidence_summary.split('Investigating Officer:')[1] if 'Investigating Officer:' in (fir.evidence_summary or '') else 'Not assigned' }}
+            </div>
+        </div>
+        <div class="signature-right">
+            <div class="signature-line">
+                Station House Officer<br>
+                {{ fir.station_name }}
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div>Generated on: {{ fir.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+        <div>This is a computer-generated FIR report for official use only.</div>
+    </div>
+</body>
+</html>
+{% endblock %}

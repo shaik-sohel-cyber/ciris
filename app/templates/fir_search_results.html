@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">FIR <span style="font-weight: 300; opacity: 0.6;">SEARCH RESULTS</span></h1>
+        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">
+            ADVANCED FILTER RESULTS
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="/firs/advanced-search" class="btn-secondary-custom">
+            <i class="fas fa-search-plus"></i> Modify Search
+        </a>
+        <a href="/firs" class="btn-secondary-custom">
+            <i class="fas fa-list"></i> All FIRs
+        </a>
+    </div>
+</div>
+
+<!-- Search Summary -->
+<div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <h3 style="margin-bottom: 15px; color: var(--text-main);">Search Criteria</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.85rem;">
+        {% for key, value in search_params.items() %}
+        {% if value %}
+        <div style="background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted); text-transform: uppercase; font-size: 0.7rem;">{{ key.replace('_', ' ') }}</span><br>
+            <span style="color: var(--text-main); font-weight: 500;">{{ value }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Results Count -->
+<div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">
+    Found <strong style="color: var(--accent-blue);">{{ total_count }}</strong> matching FIR record(s)
+    {% if total_count > 20 %}
+    (showing page {{ current_page }} of {{ total_pages }})
+    {% endif %}
+</div>
+
+<!-- FIR Table (same as fir_list.html but without filters) -->
+<div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; font-size: .84rem;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">FIR Number</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Incident</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">District</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Crime Type</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Priority</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Status</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fir in firs %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                <td style="padding: 13px 18px; color: var(--accent-blue); font-weight: 700; font-family: monospace;">{{ fir.fir_number }}</td>
+                <td style="padding: 13px 18px;">
+                    <div style="font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ fir.title }}</div>
+                    <div style="font-size: .72rem; color: var(--text-muted); margin-top: 2px;">{{ fir.incident_date }} &nbsp;·&nbsp; {{ fir.station_name }}</div>
+                </td>
+                <td style="padding: 13px 18px; color: var(--text-muted);">{{ fir.district }}</td>
+                <td style="padding: 13px 18px; color: var(--text-muted); font-size: .78rem;">{{ fir.crime_type or '—' }}</td>
+                <td style="padding: 13px 18px;">
+                    <span style="padding: 3px 10px; border-radius: 5px; font-size: .72rem; font-weight: 700;
+                        {% if fir.priority == 'Critical' %}background:rgba(239,68,68,.18);color:#ef4444;
+                        {% elif fir.priority == 'High' %}background:rgba(245,158,11,.18);color:#f59e0b;
+                        {% elif fir.priority == 'Medium' %}background:rgba(59,130,246,.18);color:#3b82f6;
+                        {% else %}background:rgba(16,185,129,.18);color:#10b981;{% endif %}">
+                        {{ fir.priority }}
+                    </span>
+                </td>
+                <td style="padding: 13px 18px; color: var(--text-muted); font-size: .8rem;">{{ fir.status }}</td>
+                <td style="padding: 13px 18px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <a href="/firs/{{ fir.id }}" title="View Details"
+                            style="background: rgba(59,130,246,.15); color: #3b82f6; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: .75rem; text-decoration: none; display: inline-block;">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="/firs/{{ fir.id }}/edit" title="Edit FIR"
+                            style="background: rgba(59,130,246,.15); color: #3b82f6; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: .75rem; text-decoration: none; display: inline-block;">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="/firs/{{ fir.id }}/print" target="_blank" title="Print FIR"
+                            style="background: rgba(16,185,129,.15); color: #10b981; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: .75rem; text-decoration: none; display: inline-block;">
+                            <i class="fas fa-print"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="padding: 50px; text-align: center; color: var(--text-muted);">
+                    <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 12px; display: block; opacity: .4;"></i>
+                    No FIR records match your search criteria.
+                    <br><small>Try adjusting your filters or <a href="/firs/advanced-search" style="color: var(--accent-blue);">modify your search</a>.</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px; background: var(--secondary-bg); border-radius: 10px;">
+    <div style="font-size: 0.82rem; color: var(--text-muted);">
+        Page <strong style="color: var(--text-main);">{{ current_page }}</strong> of <strong style="color: var(--text-main);">{{ total_pages }}</strong>
+        <span style="margin-left: 15px;">({{ total_count }} total results)</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        {% if current_page > 1 %}
+        <form method="post" action="/firs/advanced-search" style="display: inline;">
+            {% for key, value in search_params.items() %}
+            {% if value %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+            {% endfor %}
+            <input type="hidden" name="page" value="{{ current_page - 1 }}">
+            <button type="submit" style="padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); cursor: pointer;">
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+        </form>
+        {% endif %}
+
+        {% if current_page < total_pages %}
+        <form method="post" action="/firs/advanced-search" style="display: inline;">
+            {% for key, value in search_params.items() %}
+            {% if value %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+            {% endfor %}
+            <input type="hidden" name="page" value="{{ current_page + 1 }}">
+            <button type="submit" style="padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); cursor: pointer;">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .btn-secondary-custom {
+        background: var(--card-bg);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .btn-secondary-custom:hover {
+        background: var(--border-color);
+    }
+</style>
+{% endblock %}

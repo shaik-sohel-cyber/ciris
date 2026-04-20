@@ -34,6 +34,7 @@ GEMINI_KEYS = [
 ]
 current_key_index = 0
 
+
 def get_genai_model():
     global current_key_index
     genai.configure(api_key=GEMINI_KEYS[current_key_index])
@@ -1305,20 +1306,20 @@ def fir_list(
             FIR.station_name.ilike(like), FIR.description.ilike(like),
             FIR.location_text.ilike(like),
         ))
-    
+
     total_count = query.count()
     total_pages = max(1, (total_count + PAGE_SIZE - 1) // PAGE_SIZE)
     page = max(1, min(page, total_pages)) if total_count > 0 else 1
-    
+
     firs = query.order_by(FIR.incident_date.desc(), FIR.id.desc()).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
     districts   = [r[0] for r in db.query(FIR.district).distinct().order_by(FIR.district).all()]
     crime_types = [r[0] for r in db.query(FIR.crime_type).distinct().order_by(FIR.crime_type).all()]
-    
+
     # Get status counts
     status_counts = {}
     for status in ["Open", "Under Investigation", "Active Search", "In Custody", "Resolved", "Closed"]:
         status_counts[status] = db.query(func.count(FIR.id)).filter(FIR.status == status).scalar() or 0
-    
+
     return templates.TemplateResponse(
         request=request, name="fir_list.html",
         context={
@@ -1329,6 +1330,274 @@ def fir_list(
             "status_counts": status_counts,
         },
     )
+
+
+@app.get("/firs/advanced-search", response_class=HTMLResponse)
+def advanced_search_firs(request: Request, db: Session = Depends(get_db)):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+
+    # Get all filter options
+    districts = [r[0] for r in db.query(FIR.district).distinct().order_by(FIR.district).all()]
+    crime_types = [r[0] for r in db.query(FIR.crime_type).distinct().order_by(FIR.crime_type).all()]
+    priorities = [r[0] for r in db.query(FIR.priority).distinct().order_by(FIR.priority).all()]
+    statuses = [r[0] for r in db.query(FIR.status).distinct().order_by(FIR.status).all()]
+    complainants = [r[0] for r in db.query(FIR.complainant_name).distinct().filter(FIR.complainant_name != None).order_by(FIR.complainant_name).all()]
+
+    return templates.TemplateResponse(
+        request=request, name="fir_advanced_search.html",
+        context={
+            "request": request,
+            "districts": districts,
+            "crime_types": crime_types,
+            "priorities": priorities,
+            "statuses": statuses,
+            "complainants": complainants,
+        },
+    )
+
+
+@app.post("/firs/advanced-search", response_class=HTMLResponse)
+def advanced_search_results(
+    request: Request,
+    fir_number: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
+    district: Optional[str] = Form(None),
+    station_name: Optional[str] = Form(None),
+    crime_type: Optional[str] = Form(None),
+    priority: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
+    complainant_name: Optional[str] = Form(None),
+    accused_name: Optional[str] = Form(None),
+    incident_date_from: Optional[str] = Form(None),
+    incident_date_to: Optional[str] = Form(None),
+    reported_date_from: Optional[str] = Form(None),
+    reported_date_to: Optional[str] = Form(None),
+    description_contains: Optional[str] = Form(None),
+    page: int = Form(1),
+    db: Session = Depends(get_db)
+):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+
+    PAGE_SIZE = 20
+    query = db.query(FIR)
+
+    # Apply filters
+    if fir_number: query = query.filter(FIR.fir_number.ilike(f"%{fir_number}%"))
+    if title: query = query.filter(FIR.title.ilike(f"%{title}%"))
+    if district: query = query.filter(FIR.district == district)
+    if station_name: query = query.filter(FIR.station_name.ilike(f"%{station_name}%"))
+    if crime_type: query = query.filter(FIR.crime_type == crime_type)
+    if priority: query = query.filter(FIR.priority == priority)
+    if status: query = query.filter(FIR.status == status)
+    if complainant_name: query = query.filter(FIR.complainant_name.ilike(f"%{complainant_name}%"))
+    if accused_name: query = query.filter(FIR.accused_name.ilike(f"%{accused_name}%"))
+
+    # Date filters
+    if incident_date_from:
+        try:
+            from_date = datetime.strptime(incident_date_from, "%Y-%m-%d").date()
+            query = query.filter(FIR.incident_date >= from_date)
+        except ValueError:
+            pass
+    if incident_date_to:
+        try:
+            to_date = datetime.strptime(incident_date_to, "%Y-%m-%d").date()
+            query = query.filter(FIR.incident_date <= to_date)
+        except ValueError:
+            pass
+    if reported_date_from and FIR.reported_at:
+        try:
+            from_date = datetime.strptime(reported_date_from, "%Y-%m-%d")
+            query = query.filter(FIR.reported_at >= from_date)
+        except ValueError:
+            pass
+    if reported_date_to and FIR.reported_at:
+        try:
+            to_date = datetime.strptime(reported_date_to, "%Y-%m-%d")
+            query = query.filter(FIR.reported_at <= to_date)
+        except ValueError:
+            pass
+
+    if description_contains:
+        query = query.filter(FIR.description.ilike(f"%{description_contains}%"))
+
+    total_count = query.count()
+    total_pages = max(1, (total_count + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = max(1, min(page, total_pages)) if total_count > 0 else 1
+
+    firs = query.order_by(FIR.incident_date.desc(), FIR.id.desc()).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
+
+    return templates.TemplateResponse(
+        request=request, name="fir_search_results.html",
+        context={
+            "request": request, "firs": firs,
+            "current_page": page, "total_pages": total_pages, "total_count": total_count,
+            "search_params": {
+                "fir_number": fir_number, "title": title, "district": district,
+                "station_name": station_name, "crime_type": crime_type, "priority": priority,
+                "status": status, "complainant_name": complainant_name, "accused_name": accused_name,
+                "incident_date_from": incident_date_from, "incident_date_to": incident_date_to,
+                "reported_date_from": reported_date_from, "reported_date_to": reported_date_to,
+                "description_contains": description_contains,
+            }
+        },
+    )
+
+
+@app.get("/firs/bulk-actions", response_class=HTMLResponse)
+def bulk_actions_page(request: Request, db: Session = Depends(get_db)):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+
+    # Get some sample FIRs for demonstration (in real app, this would come from search results)
+    firs = db.query(FIR).order_by(FIR.created_at.desc()).limit(50).all()
+
+    return templates.TemplateResponse(
+        request=request, name="fir_bulk_actions.html",
+        context={
+            "request": request,
+            "firs": firs,
+        },
+    )
+
+
+@app.post("/firs/bulk-update")
+async def bulk_update_firs(
+    request: Request,
+    fir_ids: str = Form(...),
+    action: str = Form(...),
+    new_status: Optional[str] = Form(None),
+    new_priority: Optional[str] = Form(None),
+    new_crime_type: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized"})
+
+    try:
+        # Parse FIR IDs
+        ids = [int(id.strip()) for id in fir_ids.split(',') if id.strip()]
+
+        if not ids:
+            return JSONResponse(status_code=400, content={"success": False, "error": "No FIR IDs provided"})
+
+        # Get FIRs to update
+        firs = db.query(FIR).filter(FIR.id.in_(ids)).all()
+
+        if not firs:
+            return JSONResponse(status_code=404, content={"success": False, "error": "No FIRs found with provided IDs"})
+
+        updated_count = 0
+
+        # Perform bulk action
+        for fir in firs:
+            if action == "status" and new_status:
+                fir.status = new_status
+                updated_count += 1
+            elif action == "priority" and new_priority:
+                fir.priority = new_priority
+                updated_count += 1
+            elif action == "crime_type" and new_crime_type:
+                fir.crime_type = new_crime_type
+                updated_count += 1
+            elif action == "delete":
+                db.delete(fir)
+                updated_count += 1
+
+        db.commit()
+
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Successfully updated {updated_count} FIR(s)",
+            "updated_count": updated_count
+        })
+
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "error": f"Bulk update failed: {str(e)}"
+        })
+
+
+@app.get("/api/firs/check-duplicates")
+def check_fir_duplicates(
+    request: Request,
+    complainant_name: Optional[str] = None,
+    incident_date: Optional[str] = None,
+    location_text: Optional[str] = None,
+    description: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """API endpoint to check for potential duplicate FIRs"""
+    if not is_authenticated(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+    query = db.query(FIR)
+
+    # Build similarity checks
+    duplicates = []
+
+    if complainant_name:
+        # Find FIRs with similar complainant names
+        similar_complainants = db.query(FIR).filter(
+            FIR.complainant_name.ilike(f"%{complainant_name}%")
+        ).limit(5).all()
+        duplicates.extend([{
+            "id": fir.id,
+            "fir_number": fir.fir_number,
+            "title": fir.title,
+            "complainant_name": fir.complainant_name,
+            "incident_date": str(fir.incident_date),
+            "reason": "Similar complainant name"
+        } for fir in similar_complainants])
+
+    if incident_date:
+        try:
+            date_obj = datetime.strptime(incident_date, "%Y-%m-%d").date()
+            # Find FIRs on same date with similar details
+            same_date_firs = db.query(FIR).filter(
+                FIR.incident_date == date_obj
+            ).limit(3).all()
+            for fir in same_date_firs:
+                if fir not in [d.get("fir") for d in duplicates]:
+                    duplicates.append({
+                        "id": fir.id,
+                        "fir_number": fir.fir_number,
+                        "title": fir.title,
+                        "complainant_name": fir.complainant_name,
+                        "incident_date": str(fir.incident_date),
+                        "reason": "Same incident date"
+                    })
+        except ValueError:
+            pass
+
+    if location_text:
+        # Find FIRs at similar locations
+        location_matches = db.query(FIR).filter(
+            FIR.location_text.ilike(f"%{location_text}%")
+        ).limit(3).all()
+        for fir in location_matches:
+            if fir.id not in [d["id"] for d in duplicates]:
+                duplicates.append({
+                    "id": fir.id,
+                    "fir_number": fir.fir_number,
+                    "title": fir.title,
+                    "complainant_name": fir.complainant_name,
+                    "incident_date": str(fir.incident_date),
+                    "reason": "Similar location"
+                })
+
+    return JSONResponse(content={
+        "duplicates": duplicates[:10],  # Limit to 10 results
+        "count": len(duplicates)
+    })
 
 
 @app.get("/firs/new", response_class=HTMLResponse)
@@ -1641,8 +1910,33 @@ async def create_fir(
     # Auto-classify if needed
     final_description = description or "No description provided."
     classification = classify_crime_type(description=final_description, legal_section=legal_section or "")
-    
-    final_fir_number = fir_number or f"FIR-{uuid.uuid4().hex[:8].upper()}"
+
+    # Auto-generate FIR number if not provided
+    if not fir_number:
+        # Format: FIR-YYYY-NNNN (e.g., FIR-2026-0001)
+        current_year = datetime.now().year
+        # Find the highest existing FIR number for this year
+        try:
+            existing_firs = db.query(FIR).filter(FIR.fir_number.like(f"FIR-{current_year}-%")).all()
+            if existing_firs:
+                # Extract numbers and find the highest
+                numbers = []
+                for fir in existing_firs:
+                    try:
+                        num_part = fir.fir_number.split('-')[-1]
+                        numbers.append(int(num_part))
+                    except (ValueError, IndexError):
+                        continue
+                next_num = max(numbers) + 1 if numbers else 1
+            else:
+                next_num = 1
+            final_fir_number = "04d"
+        except Exception:
+            # Fallback to UUID if database query fails
+            final_fir_number = f"FIR-{current_year}-{uuid.uuid4().hex[:4].upper()}"
+    else:
+        final_fir_number = fir_number.strip().upper()
+
     final_crime_type = crime_type or classification["crime_type"]
     final_priority = priority or classification["priority"]
 
@@ -1683,6 +1977,20 @@ def view_fir(fir_id: int, request: Request, db: Session = Depends(get_db)):
         return templates.TemplateResponse(request=request, name="fir_list.html", context={"request": request, "error": "FIR not found"})
     return templates.TemplateResponse(
         request=request, name="fir_detail.html",
+        context={"request": request, "fir": fir}
+    )
+
+
+@app.get("/firs/{fir_id}/print", response_class=HTMLResponse)
+def print_fir(fir_id: int, request: Request, db: Session = Depends(get_db)):
+    redirect = redirect_if_not_logged_in(request)
+    if redirect:
+        return redirect
+    fir = db.query(FIR).filter(FIR.id == fir_id).first()
+    if not fir:
+        return templates.TemplateResponse(request=request, name="fir_list.html", context={"request": request, "error": "FIR not found"})
+    return templates.TemplateResponse(
+        request=request, name="fir_print.html",
         context={"request": request, "fir": fir}
     )
 

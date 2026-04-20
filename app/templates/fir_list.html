@@ -75,9 +75,18 @@
 </div>
 
 <!-- FIR Count badge -->
-<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px;">
-    Showing <strong style="color: var(--text-main);">{{ firs | length }}</strong> record(s)
-</div>
+    <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px;">
+        Showing <strong style="color: var(--text-main);">{{ firs | length }}</strong> record(s)
+        <span style="margin-left: 15px;">
+            <a href="/firs/advanced-search" style="color: var(--accent-blue); text-decoration: none; font-weight: 500;">
+                <i class="fas fa-search-plus"></i> Advanced Search
+            </a>
+            &nbsp;|&nbsp;
+            <a href="/firs/bulk-actions" style="color: var(--accent-blue); text-decoration: none; font-weight: 500;">
+                <i class="fas fa-tasks"></i> Bulk Actions
+            </a>
+        </span>
+    </div>
 
 <!-- FIR Table -->
 <div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">

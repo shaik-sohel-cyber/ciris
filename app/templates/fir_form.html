@@ -82,6 +82,33 @@
     }
     .ocr-upload-zone:hover { background: rgba(59, 130, 246, 0.1); }
 
+    .entry-method-btn {
+        background: var(--input-bg);
+        border: 2px solid var(--border-color);
+        color: var(--text-main);
+        padding: 25px 30px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+        min-width: 200px;
+    }
+    .entry-method-btn:hover {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.1);
+    }
+    .entry-method-btn.active {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--accent-blue);
+    }
+    .entry-method-btn i {
+        color: var(--accent-blue);
+    }
+    .entry-method-btn.active i {
+        color: var(--accent-blue);
+    }
+
     .btn-finalize {
         background: var(--accent-blue);
         color: white;
@@ -123,8 +150,29 @@
 </style>
 
 <div class="fir-container">
-    <!-- OCR Dropzone (Single Action) -->
-    <div class="ocr-upload-zone" onclick="document.getElementById('fir_image').click()">
+    <!-- Entry Method Selection -->
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <h2 style="text-align: center; margin-bottom: 20px; color: var(--text-main);">Choose Entry Method</h2>
+        <div style="display: flex; gap: 20px; justify-content: center;">
+            <button id="manualBtn" class="entry-method-btn active" onclick="setEntryMethod('manual')">
+                <i class="fas fa-keyboard fa-2x"></i>
+                <div style="margin-top: 10px;">
+                    <strong>Manual Entry</strong>
+                    <p style="font-size: 0.8rem; margin: 5px 0 0; opacity: 0.8;">Enter all details manually</p>
+                </div>
+            </button>
+            <button id="ocrBtn" class="entry-method-btn" onclick="setEntryMethod('ocr')">
+                <i class="fas fa-file-invoice fa-2x"></i>
+                <div style="margin-top: 10px;">
+                    <strong>OCR Assisted</strong>
+                    <p style="font-size: 0.8rem; margin: 5px 0 0; opacity: 0.8;">Upload FIR document & auto-fill</p>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- OCR Dropzone (Hidden by default) -->
+    <div class="ocr-upload-zone" id="ocrZone" style="display: none;" onclick="document.getElementById('fir_image').click()">
         <i class="fas fa-file-invoice fa-2x" style="color: var(--accent-blue); margin-bottom: 15px;"></i>
         <h3 style="font-weight: 800; color: var(--text-main);">AUTO-FILL FROM IMAGE</h3>
         <p style="color: var(--text-muted); font-size: 0.85rem;">Upload the official FIR scan to populate the form instantly.</p>
@@ -132,21 +180,39 @@
         <div class="loader" id="ocrLoader"></div>
     </div>
 
-    <div class="review-card">
+    <!-- Duplicate Warning (Hidden by default) -->
+    <div id="duplicateWarning" style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: none;">
+        <h3 style="color: #92400e; margin-bottom: 10px;">
+            <i class="fas fa-exclamation-triangle"></i> Potential Duplicate FIR Detected
+        </h3>
+        <p style="color: #92400e; margin-bottom: 15px;">Similar FIR(s) found in the system. Please review before proceeding:</p>
+        <div id="duplicateList" style="max-height: 200px; overflow-y: auto; background: white; border-radius: 6px; padding: 10px;"></div>
+        <div style="margin-top: 15px;">
+            <button type="button" onclick="proceedAnyway()" style="background: #f59e0b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                Proceed Anyway
+            </button>
+            <button type="button" onclick="cancelSubmission()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-left: 10px;">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <div class="review-card" id="formCard">
         <div class="header-group">
             <div style="display: flex; align-items: center;">
-                <h1>Review Extracted Data</h1>
-                <span id="extractedStatus" class="status-badge">AI EXTRACTED</span>
+                <h1 id="formTitle">Manual FIR Entry</h1>
+                <span id="extractedStatus" class="status-badge" style="display: none;">AI EXTRACTED</span>
             </div>
-            <p>Please review and correct the information extracted from the FIR document. Make any necessary changes before saving.</p>
+            <p id="formDescription">Enter all FIR details manually in the form below. All fields marked with * are required.</p>
         </div>
 
-        <form action="/firs/new" method="post">
-            <!-- Row 1: FIR NUMBER, INCIDENT DATE, YEAR -->
+        <form action="/firs/new" method="post" enctype="multipart/form-data" onsubmit="return checkForDuplicates()">
+            <input type="hidden" name="entry_method" id="entryMethod" value="manual">
+            <!-- Row 1: FIR NUMBER, INCIDENT DATE, INCIDENT TIME -->
             <div class="form-row">
                 <div class="form-group col-4"><label>FIR NUMBER</label><input type="text" name="fir_number" id="f_fir_no" required></div>
-                <div class="form-group col-4"><label>INCIDENT DATE</label><input type="text" name="incident_date" id="f_date" required></div>
-                <div class="form-group col-4"><label>YEAR</label><input type="text" name="year" id="f_year"></div>
+                <div class="form-group col-4"><label>INCIDENT DATE</label><input type="date" name="incident_date" id="f_date" required></div>
+                <div class="form-group col-4"><label>INCIDENT TIME</label><input type="time" name="incident_time" id="f_time"></div>
             </div>
 
             <!-- Row 2: POLICE STATION, DISTRICT -->
@@ -155,7 +221,26 @@
                 <div class="form-group col-6"><label>DISTRICT</label><input type="text" name="district" id="f_district" required></div>
             </div>
 
-            <!-- Row 3: ACT(S), SECTION(S), LEGAL SECTION -->
+            <!-- Row 3: CRIME TYPE, PRIORITY, STATUS -->
+            <div class="form-row">
+                <div class="form-group col-4"><label>CRIME TYPE</label><input type="text" name="crime_type" id="f_crime_type" placeholder="e.g., Theft, Assault, Robbery"></div>
+                <div class="form-group col-4"><label>PRIORITY</label><select name="priority" id="f_priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select></div>
+                <div class="form-group col-4"><label>STATUS</label><select name="status" id="f_status">
+                    <option value="Open" selected>Open</option>
+                    <option value="Under Investigation">Under Investigation</option>
+                    <option value="Active Search">Active Search</option>
+                    <option value="In Custody">In Custody</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                </select></div>
+            </div>
+
+            <!-- Row 3.5: ACT(S), SECTION(S), LEGAL SECTION -->
             <div class="form-row">
                 <div class="form-group col-4"><label>ACT(S)</label><input type="text" id="f_acts" value="IPC 1860"></div>
                 <div class="form-group col-4"><label>SECTION(S)</label><input type="text" id="f_sections" value="379"></div>
@@ -203,10 +288,21 @@
                 <div class="form-group col-6"><label>EMAIL ID</label><input type="text" name="complainant_email" id="f_email"></div>
             </div>
 
-            <!-- Row 11: ACCUSED / SUSPECT, INQUEST REPORT / CASE NO -->
+            <!-- Row 11: ACCUSED / SUSPECT, WEAPON USED -->
             <div class="form-row">
                 <div class="form-group col-6"><label>ACCUSED / SUSPECT</label><input type="text" name="accused_name" id="f_accused"></div>
-                <div class="form-group col-6"><label>INQUEST REPORT / CASE NO.</label><input type="text" id="f_inquest"></div>
+                <div class="form-group col-6"><label>WEAPON USED</label><input type="text" name="weapon_used" id="f_weapon" placeholder="e.g., Knife, Firearm, None"></div>
+            </div>
+
+            <!-- Row 11.5: VICTIM AGE, VICTIM GENDER -->
+            <div class="form-row">
+                <div class="form-group col-6"><label>VICTIM AGE</label><input type="number" name="victim_age" id="f_victim_age" min="0" max="120"></div>
+                <div class="form-group col-6"><label>VICTIM GENDER</label><select name="victim_gender" id="f_victim_gender">
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select></div>
             </div>
 
             <!-- Row 12: PROPERTY / VEHICLE DETAILS, ESTIMATED VALUE -->
@@ -231,6 +327,91 @@
 </div>
 
 <script>
+    // Initialize with manual entry
+    document.addEventListener('DOMContentLoaded', function() {
+        setEntryMethod('manual');
+
+        // Add duplicate checking on key field changes
+        const checkFields = ['f_comp_name', 'f_date', 'f_place_addr'];
+        checkFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.addEventListener('blur', function() {
+                    // Debounced duplicate check
+                    clearTimeout(window.duplicateCheckTimeout);
+                    window.duplicateCheckTimeout = setTimeout(() => {
+                        checkForDuplicatesOnChange();
+                    }, 1000);
+                });
+            }
+        });
+    });
+
+    async function checkForDuplicatesOnChange() {
+        const complainantName = document.getElementById('f_comp_name').value.trim();
+        const incidentDate = document.getElementById('f_date').value;
+        const location = document.getElementById('f_place_addr').value.trim();
+
+        // Hide warning if fields are cleared
+        if (!complainantName && !incidentDate && !location) {
+            document.getElementById('duplicateWarning').style.display = 'none';
+            return;
+        }
+
+        // Only check if we have at least 2 matching criteria
+        const criteriaCount = [complainantName, incidentDate, location].filter(Boolean).length;
+        if (criteriaCount < 2) {
+            document.getElementById('duplicateWarning').style.display = 'none';
+            return;
+        }
+
+        try {
+            const params = new URLSearchParams();
+            if (complainantName) params.append('complainant_name', complainantName);
+            if (incidentDate) params.append('incident_date', incidentDate);
+            if (location) params.append('location_text', location);
+
+            const response = await fetch(`/api/firs/check-duplicates?${params}`);
+            const data = await response.json();
+
+            if (data.count > 0) {
+                showDuplicateWarning(data.duplicates);
+            } else {
+                document.getElementById('duplicateWarning').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Duplicate check failed:', error);
+        }
+    }
+
+    function setEntryMethod(method) {
+        const manualBtn = document.getElementById('manualBtn');
+        const ocrBtn = document.getElementById('ocrBtn');
+        const ocrZone = document.getElementById('ocrZone');
+        const formTitle = document.getElementById('formTitle');
+        const formDescription = document.getElementById('formDescription');
+        const extractedStatus = document.getElementById('extractedStatus');
+        const entryMethodField = document.getElementById('entryMethod');
+
+        entryMethodField.value = method;
+
+        if (method === 'manual') {
+            manualBtn.classList.add('active');
+            ocrBtn.classList.remove('active');
+            ocrZone.style.display = 'none';
+            formTitle.textContent = 'Manual FIR Entry';
+            formDescription.textContent = 'Enter all FIR details manually in the form below. All fields marked with * are required.';
+            extractedStatus.style.display = 'none';
+        } else {
+            manualBtn.classList.remove('active');
+            ocrBtn.classList.add('active');
+            ocrZone.style.display = 'block';
+            formTitle.textContent = 'Review Extracted Data';
+            formDescription.textContent = 'Please review and correct the information extracted from the FIR document. Make any necessary changes before saving.';
+            extractedStatus.style.display = 'none';
+        }
+    }
+
     async function handleOCR(input) {
         if (!input.files || !input.files[0]) return;
         const file = input.files[0];
@@ -248,7 +429,7 @@
                 body: formData
             });
             const data = await response.json();
-            
+
             if (data.success) {
                 fillForm(data.extracted_data);
                 document.getElementById('extractedStatus').style.display = 'inline-block';
@@ -270,18 +451,24 @@
     function fillForm(d) {
         const mapping = {
             'f_fir_no': d.fir_number,
-            'f_date': d.fir_date || d.incident_date,
-            'f_year': d.year || '2024',
-            'f_ps': d.ps || d.station_name,
+            'f_date': d.incident_date || d.fir_date,
+            'f_time': d.incident_time || d.occ_time_from,
+            'f_ps': d.station_name || d.ps,
             'f_district': d.district,
-            'f_legal': d.acts_sections,
+            'f_crime_type': d.crime_type,
+            'f_legal': d.acts_sections || d.legal_section,
             'f_comp_name': d.complainant_name,
-            'f_comp_addr': d.complainant_address || d.location_text,
+            'f_comp_addr': d.complainant_address,
             'f_mobile': d.complainant_mobile,
             'f_email': d.complainant_email,
+            'f_accused': d.accused_name,
+            'f_weapon': d.weapon_used,
+            'f_victim_age': d.victim_age,
+            'f_victim_gender': d.victim_gender,
+            'f_place_addr': d.location_text,
             'f_prop_details': d.property_details,
             'f_prop_value': d.property_value,
-            'f_desc': d.description,
+            'f_desc': d.description || d.fir_contents,
             'f_contents': d.fir_contents || d.description,
             'f_action': d.action_taken || 'Registered the case and took up the investigation',
             'f_io': d.investigating_officer
@@ -292,9 +479,79 @@
                 el.value = mapping[id];
                 el.classList.add('ai-filled');
                 // Remove glow after animation
-                setTimeout(() => el.classList.remove('ai-filled-glow'), 2000);
+                setTimeout(() => el.classList.remove('ai-filled'), 2000);
             }
         }
+    }
+
+    async function checkForDuplicates() {
+        const complainantName = document.getElementById('f_comp_name').value.trim();
+        const incidentDate = document.getElementById('f_date').value;
+        const location = document.getElementById('f_place_addr').value.trim();
+        const description = document.getElementById('f_desc').value.trim();
+
+        // Only check if we have minimum required data
+        if (!complainantName && !incidentDate && !location) {
+            return true; // Allow submission
+        }
+
+        try {
+            const params = new URLSearchParams();
+            if (complainantName) params.append('complainant_name', complainantName);
+            if (incidentDate) params.append('incident_date', incidentDate);
+            if (location) params.append('location_text', location);
+
+            const response = await fetch(`/api/firs/check-duplicates?${params}`);
+            const data = await response.json();
+
+            if (data.count > 0) {
+                showDuplicateWarning(data.duplicates);
+                return false; // Prevent submission
+            }
+
+            return true; // Allow submission
+        } catch (error) {
+            console.error('Duplicate check failed:', error);
+            // Allow submission if check fails
+            return true;
+        }
+    }
+
+    function showDuplicateWarning(duplicates) {
+        const warning = document.getElementById('duplicateWarning');
+        const list = document.getElementById('duplicateList');
+
+        let html = '<div style="display: grid; gap: 10px;">';
+        duplicates.forEach(dup => {
+            html += `
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #f9fafb;">
+                    <div style="font-weight: bold; color: #1f2937;">${dup.fir_number}: ${dup.title}</div>
+                    <div style="font-size: 0.9rem; color: #6b7280;">
+                        Complainant: ${dup.complainant_name || 'N/A'} |
+                        Date: ${dup.incident_date} |
+                        Reason: ${dup.reason}
+                    </div>
+                    <a href="/firs/${dup.id}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.9rem;">
+                        View Details →
+                    </a>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        list.innerHTML = html;
+        warning.style.display = 'block';
+        warning.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function proceedAnyway() {
+        document.getElementById('duplicateWarning').style.display = 'none';
+        // Submit the form
+        document.querySelector('form').submit();
+    }
+
+    function cancelSubmission() {
+        document.getElementById('duplicateWarning').style.display = 'none';
     }
 </script>
 {% endblock %}

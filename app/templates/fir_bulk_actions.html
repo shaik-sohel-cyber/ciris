@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">FIR <span style="font-weight: 300; opacity: 0.6;">BULK ACTIONS</span></h1>
+        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">
+            MANAGE MULTIPLE RECORDS SIMULTANEOUSLY
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button id="selectAllBtn" class="btn-secondary-custom" onclick="toggleSelectAll()">
+            <i class="fas fa-check-square"></i> Select All
+        </button>
+        <a href="/firs" class="btn-secondary-custom">
+            <i class="fas fa-arrow-left"></i> Back to FIR List
+        </a>
+    </div>
+</div>
+
+<!-- Bulk Actions Panel -->
+<div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <h3 style="margin-bottom: 15px; color: var(--text-main);">Bulk Operations</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+
+        <!-- Status Update -->
+        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
+            <h4 style="margin-bottom: 10px; color: var(--text-main);">Update Status</h4>
+            <select id="bulkStatus" style="width: 100%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 8px; margin-bottom: 10px;">
+                <option value="">Select Status</option>
+                <option value="Open">Open</option>
+                <option value="Under Investigation">Under Investigation</option>
+                <option value="Active Search">Active Search</option>
+                <option value="In Custody">In Custody</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+            </select>
+            <button onclick="bulkUpdate('status')" class="btn-primary-custom" style="width: 100%; padding: 8px;">
+                <i class="fas fa-edit"></i> Update Status
+            </button>
+        </div>
+
+        <!-- Priority Update -->
+        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
+            <h4 style="margin-bottom: 10px; color: var(--text-main);">Update Priority</h4>
+            <select id="bulkPriority" style="width: 100%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 8px; margin-bottom: 10px;">
+                <option value="">Select Priority</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+            </select>
+            <button onclick="bulkUpdate('priority')" class="btn-primary-custom" style="width: 100%; padding: 8px;">
+                <i class="fas fa-exclamation-triangle"></i> Update Priority
+            </button>
+        </div>
+
+        <!-- Crime Type Update -->
+        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
+            <h4 style="margin-bottom: 10px; color: var(--text-main);">Update Crime Type</h4>
+            <input type="text" id="bulkCrimeType" placeholder="Enter crime type..." style="width: 100%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 8px; margin-bottom: 10px;">
+            <button onclick="bulkUpdate('crime_type')" class="btn-primary-custom" style="width: 100%; padding: 8px;">
+                <i class="fas fa-tag"></i> Update Crime Type
+            </button>
+        </div>
+
+        <!-- Delete Selected -->
+        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
+            <h4 style="margin-bottom: 10px; color: #ef4444;">Danger Zone</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">This action cannot be undone</p>
+            <button onclick="bulkDelete()" class="btn-danger-custom" style="width: 100%; padding: 8px;">
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+    </div>
+
+    <!-- Selection Summary -->
+    <div id="selectionSummary" style="margin-top: 15px; padding: 10px; background: var(--card-bg); border-radius: 6px; display: none;">
+        <span id="selectedCount" style="color: var(--accent-blue); font-weight: bold;">0</span> FIR(s) selected
+    </div>
+</div>
+
+<!-- FIR Table with Checkboxes -->
+<div style="background: var(--secondary-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; font-size: .84rem;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <th style="padding: 13px 18px; text-align: center; width: 40px;">
+                    <input type="checkbox" id="masterCheckbox" onchange="toggleSelectAll()">
+                </th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">FIR Number</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Incident</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">District</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Priority</th>
+                <th style="padding: 13px 18px; text-align: left; color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fir in firs %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);" data-fir-id="{{ fir.id }}">
+                <td style="padding: 13px 18px; text-align: center;">
+                    <input type="checkbox" class="fir-checkbox" value="{{ fir.id }}" onchange="updateSelection()">
+                </td>
+                <td style="padding: 13px 18px; color: var(--accent-blue); font-weight: 700; font-family: monospace;">{{ fir.fir_number }}</td>
+                <td style="padding: 13px 18px;">
+                    <div style="font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ fir.title }}</div>
+                    <div style="font-size: .72rem; color: var(--text-muted); margin-top: 2px;">{{ fir.incident_date }} &nbsp;·&nbsp; {{ fir.station_name }}</div>
+                </td>
+                <td style="padding: 13px 18px; color: var(--text-muted);">{{ fir.district }}</td>
+                <td style="padding: 13px 18px;">
+                    <span style="padding: 3px 10px; border-radius: 5px; font-size: .72rem; font-weight: 700;
+                        {% if fir.priority == 'Critical' %}background:rgba(239,68,68,.18);color:#ef4444;
+                        {% elif fir.priority == 'High' %}background:rgba(245,158,11,.18);color:#f59e0b;
+                        {% elif fir.priority == 'Medium' %}background:rgba(59,130,246,.18);color:#3b82f6;
+                        {% else %}background:rgba(16,185,129,.18);color:#10b981;{% endif %}">
+                        {{ fir.priority }}
+                    </span>
+                </td>
+                <td style="padding: 13px 18px; color: var(--text-muted); font-size: .8rem;">{{ fir.status }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="padding: 50px; text-align: center; color: var(--text-muted);">
+                    <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 12px; display: block; opacity: .4;"></i>
+                    No FIR records available for bulk operations.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .btn-secondary-custom {
+        background: var(--card-bg);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .btn-primary-custom {
+        background: var(--accent-blue);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .btn-danger-custom {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .fir-checkbox {
+        transform: scale(1.2);
+    }
+</style>
+
+<script>
+let selectedFIRs = new Set();
+
+function toggleSelectAll() {
+    const masterCheckbox = document.getElementById('masterCheckbox');
+    const checkboxes = document.querySelectorAll('.fir-checkbox');
+
+    checkboxes.forEach(cb => {
+        cb.checked = masterCheckbox.checked;
+    });
+
+    updateSelection();
+}
+
+function updateSelection() {
+    const checkboxes = document.querySelectorAll('.fir-checkbox:checked');
+    selectedFIRs.clear();
+
+    checkboxes.forEach(cb => {
+        selectedFIRs.add(cb.value);
+    });
+
+    const summary = document.getElementById('selectionSummary');
+    const count = document.getElementById('selectedCount');
+
+    if (selectedFIRs.size > 0) {
+        summary.style.display = 'block';
+        count.textContent = selectedFIRs.size;
+    } else {
+        summary.style.display = 'none';
+    }
+}
+
+async function bulkUpdate(action) {
+    if (selectedFIRs.size === 0) {
+        alert('Please select at least one FIR to update.');
+        return;
+    }
+
+    let value = null;
+    if (action === 'status') {
+        value = document.getElementById('bulkStatus').value;
+    } else if (action === 'priority') {
+        value = document.getElementById('bulkPriority').value;
+    } else if (action === 'crime_type') {
+        value = document.getElementById('bulkCrimeType').value;
+    }
+
+    if (!value) {
+        alert('Please select a value to update.');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to update ${selectedFIRs.size} FIR(s)?`)) {
+        return;
+    }
+
+    const firIds = Array.from(selectedFIRs).join(',');
+
+    try {
+        const formData = new FormData();
+        formData.append('fir_ids', firIds);
+        formData.append('action', action);
+        if (action === 'status') formData.append('new_status', value);
+        if (action === 'priority') formData.append('new_priority', value);
+        if (action === 'crime_type') formData.append('new_crime_type', value);
+
+        const response = await fetch('/firs/bulk-update', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Network error occurred. Please try again.');
+    }
+}
+
+async function bulkDelete() {
+    if (selectedFIRs.size === 0) {
+        alert('Please select at least one FIR to delete.');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to DELETE ${selectedFIRs.size} FIR(s)? This action cannot be undone!`)) {
+        return;
+    }
+
+    const firIds = Array.from(selectedFIRs).join(',');
+
+    try {
+        const formData = new FormData();
+        formData.append('fir_ids', firIds);
+        formData.append('action', 'delete');
+
+        const response = await fetch('/firs/bulk-update', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Network error occurred. Please try again.');
+    }
+}
+
+// Update master checkbox state based on individual selections
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('fir-checkbox')) {
+        const allCheckboxes = document.querySelectorAll('.fir-checkbox');
+        const checkedBoxes = document.querySelectorAll('.fir-checkbox:checked');
+        const masterCheckbox = document.getElementById('masterCheckbox');
+
+        masterCheckbox.checked = allCheckboxes.length === checkedBoxes.length;
+        masterCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < allCheckboxes.length;
+    }
+});
+</script>
+{% endblock %}
