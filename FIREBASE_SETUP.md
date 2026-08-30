@@ -61,7 +61,7 @@ Firebase initialized with default credentials. Project ID: ciris-493917
 The frontend (login.html) uses this Firebase config:
 ```javascript
 const firebaseConfig = {
-    apiKey: "AIzaSyDLqOJRZ13DyJG3vEkksWNHYdeDHDK6D-w",
+    apiKey: "YOUR_FIREBASE_API_KEY",
     authDomain: "ciris-493917.firebaseapp.com",
     projectId: "ciris-493917",
     storageBucket: "ciris-493917.firebasestorage.app",

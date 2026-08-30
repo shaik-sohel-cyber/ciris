@@ -1,70 +1,126 @@
 """
 Evidence Intelligence System — LLM-Powered Multi-Agent Crime Prediction
-Uses Ollama as the LLM backbone for local, self-hosted inference.
+
 """
 import os, json, re, base64
 from typing import List, Dict, Any
-import requests
-
+import google.generativeai as genai
 # ─── LLM HELPER ─────────────────────────────────────────────────────────────────
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llava")
-OLLAMA_TEXT_MODEL = os.getenv("OLLAMA_TEXT_MODEL", "mistral")
+# 🔥 Gemini setup
+_raw_gemini_keys = os.getenv("GEMINI_API_KEYS", os.getenv("GEMINI_API_KEY", ""))
+GEMINI_KEYS = [k.strip() for k in _raw_gemini_keys.split(",") if k.strip()]
+if not GEMINI_KEYS:
+    GEMINI_KEYS = [""]
+
+current_key_index = 0
+
+
+
+def get_genai_model(vision=False):
+    global current_key_index
+
+    genai.configure(api_key=GEMINI_KEYS[current_key_index])
+
+    try:
+        models = [m.name for m in genai.list_models()]
+
+        preferred_text = [
+            "models/gemini-1.5-flash-latest",
+            "models/gemini-1.5-pro",
+            "models/gemini-pro"
+        ]
+
+        preferred_vision = [
+            "models/gemini-1.5-pro",
+            "models/gemini-pro-vision"
+        ]
+
+        preferred = preferred_vision if vision else preferred_text
+
+        for m in preferred:
+            if m in models:
+                print(f"[Gemini] Using {m}")
+                return genai.GenerativeModel(m)
+
+        # fallback
+        return genai.GenerativeModel(models[0])
+
+    except Exception as e:
+        print("[Gemini Error]", e)
+        raise
 
 def _llm_json(prompt: str) -> dict:
-    """Call Ollama text model and parse JSON from the response."""
-    try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json={
-                "model": OLLAMA_TEXT_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "format": "json",
-                "num_predict": 256
-            },
-            timeout=90  # Increased to 90 seconds
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(f"Ollama error: {resp.status_code}")
-        text = resp.json().get("response", "").strip()
-        # Extract JSON from markdown code blocks if present
-        m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-        if m:
-            text = m.group(1).strip()
-        parsed = json.loads(text)
-        return parsed
-    except requests.exceptions.Timeout:
-        raise RuntimeError("LLM timeout - model loading or slow system")
-    except Exception as e:
-        raise RuntimeError(f"LLM call failed: {str(e)[:80]}")
+    global current_key_index
+    max_retries = len(GEMINI_KEYS)
+    last_err = None
+    
+    for attempt in range(max_retries):
+        try:
+            model = get_genai_model(vision=False)
+            response = model.generate_content(
+                prompt,
+                generation_config={"temperature": 0.3}
+            )
+
+            text = response.text.strip()
+
+            # Extract JSON
+            import re, json
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+
+            return {}
+        except Exception as e:
+            last_err = e
+            err_msg = str(e).lower()
+            if any(err in err_msg for err in ["429", "quota", "exhausted", "api_key_invalid", "permission", "403", "api key"]):
+                print(f"[Gemini Fallback] Key {current_key_index} failed, rotating...")
+                current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+            else:
+                # Other errors (e.g. prompt issue), don't retry keys
+                break
+                
+    raise RuntimeError(f"Gemini error: {str(last_err)[:80]}")
 
 def _llm_vision(prompt: str, image_base64: str) -> dict:
-    """Call Ollama vision model (llava) for image/video analysis."""
-    try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "images": [image_base64],
-                "stream": False,
-                "format": "json",
-                "num_predict": 256
-            },
-            timeout=120  # Increased to 120 seconds
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(f"Ollama vision error: {resp.status_code}")
-        text = resp.json().get("response", "").strip()
-        m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-        if m:
-            text = m.group(1).strip()
-        return json.loads(text)
-    except requests.exceptions.Timeout:
-        raise RuntimeError("Vision timeout")
-    except Exception as e:
-        raise RuntimeError(f"Vision analysis failed: {str(e)[:80]}")
+    global current_key_index
+    max_retries = len(GEMINI_KEYS)
+    last_err = None
+    
+    for attempt in range(max_retries):
+        try:
+            import base64
+
+            image_bytes = base64.b64decode(image_base64)
+            VISION_MODEL = get_genai_model(vision=True)
+
+            response = VISION_MODEL.generate_content(
+                [
+                    {"mime_type": "image/jpeg", "data": image_bytes},
+                    prompt
+                ],
+                generation_config={"temperature": 0.3}
+            )
+
+            text = response.text.strip()
+
+            import re, json
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+
+            return {}
+        except Exception as e:
+            last_err = e
+            err_msg = str(e).lower()
+            if any(err in err_msg for err in ["429", "quota", "exhausted", "api_key_invalid", "permission", "403", "api key"]):
+                print(f"[Gemini Vision Fallback] Key {current_key_index} failed, rotating...")
+                current_key_index = (current_key_index + 1) % len(GEMINI_KEYS)
+            else:
+                break
+                
+    raise RuntimeError(f"Gemini vision error: {str(last_err)[:80]}")
 
 
 # ─── TRAINING DATA (context for LLM) ────────────────────────────────────────────

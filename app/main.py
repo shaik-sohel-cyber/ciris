@@ -81,14 +81,14 @@ try:
 except Exception:
     genai = None  # type: ignore
     HAS_GENAI = False
-
 # --- GEMINI AI CONFIGURATION ---
-GEMINI_KEYS = [
-    "AIzaSyDDt1cafaREiZx0qY6r2XEKiNjsOQgAtgA",
-    "AIzaSyCYeoJsaT9BFdUJg87oDIPHxHFaDzuF3iE",
-    "AIzaSyC5CnYyXJ0pnOYDtMh9fSCcBVz2pI6QBSg"
-]
+_raw_gemini_keys = os.getenv("GEMINI_API_KEYS", os.getenv("GEMINI_API_KEY", ""))
+GEMINI_KEYS = [k.strip() for k in _raw_gemini_keys.split(",") if k.strip()]
+if not GEMINI_KEYS:
+    GEMINI_KEYS = [""]
+
 current_key_index = 0
+
 
 
 def get_genai_model():

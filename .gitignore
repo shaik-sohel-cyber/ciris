@@ -34,3 +34,5 @@ firebase-admin-*.json
 .env
 .env.local
 .env.*.local
+scratch/
+
