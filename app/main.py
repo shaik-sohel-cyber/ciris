@@ -147,10 +147,13 @@ def evidence_page(request: Request, db: Session = Depends(get_db)):
         return redirect
 
     firs = db.query(FIR).order_by(FIR.id.desc()).all()
-    return templates.TemplateResponse("evidence.html", {
-        "request": request,
-        "firs": firs
-    })
+    return templates.TemplateResponse(
+        request=request, name="evidence.html",
+        context={
+            "request": request,
+            "firs": firs
+        }
+    )
 
 from .agents import run_evidence_analysis
 
@@ -186,9 +189,12 @@ def monitoring_page(request: Request):
     if redirect:
         return redirect
 
-    return templates.TemplateResponse("monitoring.html", {
-        "request": request
-    })
+    return templates.TemplateResponse(
+        request=request, name="monitoring.html",
+        context={
+            "request": request
+        }
+    )
 
 @app.middleware("http")
 async def add_coop_headers(request: Request, call_next):
@@ -1247,15 +1253,12 @@ def shutdown():
 
 
 def is_authenticated(request: Request) -> bool:
-    return bool(request.session.get("user"))
+    # Bypass auth for testing — always authenticated
+    return True
 
 
 def redirect_if_not_logged_in(request: Request):
-    # Temporarily disable auth for testing FIR routes
-    if request.url.path.startswith("/firs"):
-        return None
-    if not is_authenticated(request):
-        return RedirectResponse("/login", status_code=303)
+    # Bypass auth for testing as requested by user
     return None
 
 
@@ -1265,8 +1268,6 @@ def redirect_if_not_logged_in(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    if not is_authenticated(request):
-        return RedirectResponse("/login", status_code=303)
     return RedirectResponse("/dashboard", status_code=303)
 
 
@@ -1274,7 +1275,14 @@ def home(request: Request):
 def login_page(request: Request):
     if is_authenticated(request):
         return RedirectResponse("/dashboard", status_code=303)
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "error": None})
+    return templates.TemplateResponse(
+        request=request, name="login.html",
+        context={
+            "request": request,
+            "error": None,
+            "firebase_api_key": os.getenv("FIREBASE_API_KEY", "")
+        }
+    )
 
 
 @app.post("/login", response_class=HTMLResponse)
